@@ -44,6 +44,7 @@ uvicorn = {version = "*", optional = true}
 jupyterlab = {version = "*", optional = true}
 matplotlib = {version = "*", optional = true}
 seaborn = {version = "0.12.2", optional = true}
+nrel-pysam = "^4.2.0"
 
 [tool.poetry.extras]
 sil = ["requests", "fastapi", "docker", "uvicorn"]

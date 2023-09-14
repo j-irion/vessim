@@ -3,12 +3,12 @@ from datetime import datetime
 from typing import Union, List, Optional
 
 import pandas as pd
+import PySAM.Windpower as wp
 
 Time = Union[int, float, str, datetime]
 
 
 class TraceSimulator(ABC):
-
     def __init__(self, data: Union[pd.Series, pd.DataFrame]):
         self.data = data
 
@@ -61,12 +61,12 @@ class CarbonApi(TraceSimulator):
         try:
             return zone_carbon_intensity.loc[self.data.index.asof(dt)]
         except KeyError:
-            raise ValueError(f"Cannot retrieve carbon intensity at {dt} in zone "
-                             f"'{zone}'.")
+            raise ValueError(
+                f"Cannot retrieve carbon intensity at {dt} in zone " f"'{zone}'."
+            )
 
 
 class Generator(TraceSimulator):
-
     def power_at(self, dt: Time) -> float:
         """Returns the power generated at a given time.
 
@@ -80,3 +80,56 @@ class Generator(TraceSimulator):
             return self.data.loc[self.data.index.asof(dt)]
         except KeyError:
             raise ValueError(f"Cannot retrieve power at {dt}.")
+
+
+class WindGenerator(Generator):
+    def __init__(self, weather_data_file):
+        # Load the weather data
+        weather_data = pd.read_csv(weather_data_file, skiprows=1)
+
+        # Create a datetime index from the Year, Month, Day, Hour, and Minute columns
+        weather_data["Datetime"] = pd.to_datetime(
+            weather_data[["Year", "Month", "Day", "Hour", "Minute"]]
+        )
+        weather_data.set_index("Datetime", inplace=True)
+
+        super().__init__(data=weather_data)  # Call parent constructor
+        self.model = wp.default("WindPowerNone")
+        # Load the weather data
+        self.model.Resource.wind_resource_filename = weather_data_file
+        self.model.execute()
+
+    def power_at(self, dt: Time) -> float:
+        try:
+            # Convert the Time to an appropriate index in the dataframe
+            idx = self._time_to_index(dt)
+
+            # Retrieve the power from PySAM model
+            power = float(self.model.Outputs.gen[idx])
+
+            return power
+        except KeyError:
+            # If the exact timestamp isn't found, get the last valid index
+            last_valid_idx = self.data.index.asof(dt)
+
+            if pd.isna(last_valid_idx):
+                raise ValueError(f"Cannot retrieve power at {dt}.")
+
+            # Convert the last valid datetime to an appropriate index in the dataframe
+            last_valid_idx = self.data.index.get_loc(last_valid_idx)
+
+            # Retrieve the power from PySAM model using the last valid index
+            power = float(self.model.Outputs.gen[last_valid_idx])
+
+            return power
+
+    def _time_to_index(self, dt: Time) -> int:
+        # Convert the provided Time to a datetime object
+        datetime_obj = datetime.strptime(
+            str(dt), "%Y-%m-%d %H:%M:%S"
+        )  # Adjust the format as per your Time object's structure
+
+        # Find the index of the datetime object in the dataframe
+        idx = self.data.index.get_loc(datetime_obj)
+
+        return idx
