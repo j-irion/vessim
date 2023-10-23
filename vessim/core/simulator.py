@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Union, List, Optional
 
 import pandas as pd
-import PySAM.Windpower as wp
+import PySAM.Windpower as wp  # type: ignore
 
 Time = Union[int, float, str, datetime]
 
