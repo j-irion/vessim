@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Union, List, Optional
 
 import pandas as pd
-import PySAM.Windpower as wp  # type: ignore
+import PySAM.Windpower  # type: ignore
 
 Time = Union[int, float, str, datetime]
 
@@ -94,7 +94,7 @@ class WindGenerator(Generator):
         weather_data.set_index("Datetime", inplace=True)
 
         super().__init__(data=weather_data)  # Call parent constructor
-        self.model = wp.default("WindPowerNone")
+        self.model = PySAM.Windpower.default("WindPowerNone")
         # Load the weather data
         self.model.Resource.wind_resource_filename = weather_data_file
         self.model.execute()

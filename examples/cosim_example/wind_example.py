@@ -9,7 +9,7 @@ from examples._data import load_carbon_data
 from vessim import TimeSeriesApi
 from vessim.core.consumer import ComputingSystem, MockPowerMeter
 from vessim.core.microgrid import SimpleMicrogrid
-from vessim.core.simulator import CarbonApi, WindGenerator
+from vessim.core.simulator import WindGenerator
 from vessim.core.storage import SimpleBattery, DefaultStoragePolicy
 
 COSIM_CONFIG = {
