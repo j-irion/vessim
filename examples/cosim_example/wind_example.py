@@ -6,6 +6,7 @@ Runs a fully simulated example scenario over the course of two days.
 import mosaik  # type: ignore
 
 from examples._data import load_carbon_data
+from vessim import TimeSeriesApi
 from vessim.core.consumer import ComputingSystem, MockPowerMeter
 from vessim.core.microgrid import SimpleMicrogrid
 from vessim.core.simulator import CarbonApi, WindGenerator
@@ -26,7 +27,7 @@ COSIM_CONFIG = {
         "python": "vessim.cosim:MonitorSim",
     },
     "Cacu": {
-        "python": "examples.cosim_example.cacu:CacuSim",
+        "python": "examples.util.simulated_cacu:CacuSim",
     },
 }
 SIM_START = "2020-06-11 00:00:00"
@@ -53,13 +54,15 @@ def run_simulation(carbon_aware: bool, result_csv: str, weather_data_file: str):
         consumer=ComputingSystem(power_meters=mock_power_meters)
     )
 
-    # Initialize solar generator
+    # Initialize wind generator
     wind_sim = world.start("Generator", sim_start=SIM_START)
     wind = wind_sim.Generator(generator=WindGenerator(weather_data_file))
 
     # Initialize carbon intensity API
     carbon_api_sim = world.start(
-        "CarbonApi", sim_start=SIM_START, carbon_api=CarbonApi(data=load_carbon_data())
+        "CarbonApi",
+        sim_start=SIM_START,
+        carbon_api=TimeSeriesApi(actual=load_carbon_data()),
     )
     carbon_api_de = carbon_api_sim.CarbonApi(zone="DE")
 

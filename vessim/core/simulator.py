@@ -99,7 +99,7 @@ class WindGenerator(Generator):
         self.model.Resource.wind_resource_filename = weather_data_file
         self.model.execute()
 
-    def power_at(self, dt: Time) -> float:
+    def actual(self, dt: Time) -> float:
         try:
             # Convert the Time to an appropriate index in the dataframe
             idx = self._time_to_index(dt)
