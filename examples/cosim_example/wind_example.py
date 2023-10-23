@@ -5,10 +5,10 @@ Runs a fully simulated example scenario over the course of two days.
 
 import mosaik  # type: ignore
 
-from examples._data import load_carbon_data, load_solar_data
+from examples._data import load_carbon_data
 from vessim.core.consumer import ComputingSystem, MockPowerMeter
 from vessim.core.microgrid import SimpleMicrogrid
-from vessim.core.simulator import Generator, CarbonApi, WindGenerator
+from vessim.core.simulator import CarbonApi, WindGenerator
 from vessim.core.storage import SimpleBattery, DefaultStoragePolicy
 
 COSIM_CONFIG = {
@@ -99,5 +99,5 @@ if __name__ == "__main__":
     run_simulation(
         carbon_aware=True,
         result_csv="data.csv",
-        weather_data_file="../_data/WIND-Toolkit_lat39.74_lon-104.99_2014_60min.csv",
+        weather_data_file="../data/WIND-Toolkit_lat39.74_lon-104.99_2014_60min.csv",
     )

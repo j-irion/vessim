@@ -25,6 +25,9 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
 ]
 
+[tool.poetry-version-plugin]
+source = "git-tag"
+
 [tool.poetry.urls]
 "Bug Reports" = "https://github.com/dos-group/vessim/issues"
 
@@ -39,6 +42,7 @@ loguru = "*"
 requests = {version = "*", optional = true}
 fastapi = {version = "*", optional = true}
 docker = {version = "*", optional = true}
+redis = {version = "*", optional = true}
 uvicorn = {version = "*", optional = true}
 # Optional dependencies (analysis)
 jupyterlab = {version = "*", optional = true}
@@ -47,8 +51,9 @@ seaborn = {version = "0.12.2", optional = true}
 nrel-pysam = "^4.2.0"
 
 [tool.poetry.extras]
-sil = ["requests", "fastapi", "docker", "uvicorn"]
+sil = ["requests", "fastapi", "docker", "redis", "uvicorn"]
 analysis = ["jupyterlab", "matplotlib", "seaborn"]
+dev = ["pytest", "mypy", "types-psutil", "pandas-stubs", "types-requests", "black", "ruff"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
@@ -84,7 +89,7 @@ select = [
 #   D102: Missing docstring in public method
 #   D103: Missing docstring in public function
 #   D107: Missing docstring in __init__
-ignore = ["D100", "D101", "D102", "D103", "D107"]
+ignore = ["D100", "D101", "D102", "D103", "D107", "E722"]
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
 fixable = ["D", "E", "W"]

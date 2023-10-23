@@ -10,16 +10,16 @@ This is example experimental and documentation is still in progress.
 
 import mosaik  # type: ignore
 
-from examples._data import load_carbon_data, load_solar_data
-from examples.cosim_example.cosim_example import (
+from _data import load_carbon_data, load_solar_data
+from cosim_example import (
     COSIM_CONFIG,
     SIM_START,
     STORAGE,
     DURATION
 )
+from vessim import TimeSeriesApi
 from vessim.core.consumer import ComputingSystem
 from vessim.core.microgrid import SimpleMicrogrid
-from vessim.core.simulator import Generator, CarbonApi
 from vessim.sil.node import Node
 from vessim.sil.power_meter import HttpPowerMeter
 from vessim.cosim._util import disable_mosaik_warnings
@@ -28,7 +28,7 @@ from vessim.cosim._util import disable_mosaik_warnings
 COSIM_SIL_CONFIG = {
     **COSIM_CONFIG,
     "SilInterface": {
-        "python": "vessim.sil_example.sil_interface:SilInterfaceSim",
+        "python": "vessim.sil.sil_interface:SilInterfaceSim",
     },
 }
 RT_FACTOR = 1/60  # 1 wall-clock second ^= 60 sim seconds
@@ -59,11 +59,15 @@ def run_simulation():
 
     # Initialize solar generator
     solar_sim = world.start("Generator", sim_start=SIM_START)
-    solar = solar_sim.Generator(generator=Generator(data=load_solar_data(sqm=0.4 * 0.5)))
+    solar = solar_sim.Generator(
+        generator=TimeSeriesApi(actual=load_solar_data(sqm=0.4 * 0.5))
+    )
 
     # Initialize carbon intensity API
-    carbon_api_sim = world.start("CarbonApi", sim_start=SIM_START,
-                                 carbon_api=CarbonApi(data=load_carbon_data()))
+    carbon_api_sim = world.start(
+        "CarbonApi", sim_start=SIM_START, carbon_api=TimeSeriesApi(
+            actual=load_carbon_data())
+    )
     carbon_api_de = carbon_api_sim.CarbonApi(zone="DE")
 
     # Connect consumers and producers to microgrid
@@ -75,7 +79,7 @@ def run_simulation():
     # Software-in-the-loop integration
     sil_interface_sim = world.start("SilInterface", step_size=60)
     sil_interface = sil_interface_sim.SilInterface(
-        nodes=nodes, storage=STORAGE, collection_interval=1
+        nodes=nodes, battery=STORAGE, collection_interval=1
     )
     world.connect(computing_system, sil_interface, ("p", "p_cons"))
     world.connect(solar, sil_interface, ("p", "p_gen"))

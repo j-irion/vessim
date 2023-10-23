@@ -1,7 +1,7 @@
 # Vessim
 
 [![PyPI version](https://img.shields.io/pypi/v/vessim.svg?color=52c72b)](https://pypi.org/project/vessim/)
-![Build](https://github.com/dos-group/vessim/actions/workflows/vessim-ci.yml/badge.svg)
+![Tests](https://github.com/dos-group/vessim/actions/workflows/linting-and-testing.yml/badge.svg)
 [![License](https://img.shields.io/pypi/l/vessim.svg)](https://pypi.org/project/vessim/)
 [![Supported versions](https://img.shields.io/pypi/pyversions/vessim.svg)](https://pypi.org/project/vessim/)
 
@@ -52,7 +52,7 @@ pip install vessim[sil]
 and running:
 
 ```
-$ python examples/cosim_sil_example.py
+$ python examples/sil_example.py
 ```
 
 
