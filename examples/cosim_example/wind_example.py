@@ -30,8 +30,8 @@ COSIM_CONFIG = {
         "python": "examples.util.simulated_cacu:CacuSim",
     },
 }
-SIM_START = "2020-06-11 00:00:00"
-DURATION = 3600 * 24 * 2  # two days
+SIM_START = "2020-01-01 00:00:00"
+DURATION = 3600 * 24 * 365  # of days
 STORAGE = SimpleBattery(
     capacity=32 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws
     charge_level=32 * 5 * 3600 * 0.6,
@@ -102,5 +102,5 @@ if __name__ == "__main__":
     run_simulation(
         carbon_aware=True,
         result_csv="data.csv",
-        weather_data_file="../data/WIND-Toolkit_lat39.74_lon-104.99_2014_60min.csv",
+        weather_data_file="../data/wind_data_5min_interval_2014.csv",
     )
