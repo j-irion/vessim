@@ -27,7 +27,7 @@ COSIM_CONFIG = {
         "python": "vessim.cosim:MonitorSim",
     },
     "Cacu": {
-        "python": "examples.util.simulated_cacu:CacuSim",
+A        "python": "examples.util.simulated_cacu:CacuSim",
     },
 }
 SIM_START = "2020-01-01 00:00:00"

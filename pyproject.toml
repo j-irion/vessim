@@ -63,6 +63,7 @@ pandas-stubs = "*"
 types-requests = "*"
 black = "*"
 ruff = "*"
+setuptools = "^69.0.2"
 
 [build-system]
 requires = ["poetry-core>=1.1.0"]
