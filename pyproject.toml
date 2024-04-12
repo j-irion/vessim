@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "vessim"
-version = "0.2.0"
+version = "0" # Poetry requires a version configuration to be present. The poetry-version-plugin extracts the correct version from the git-tag.
 description = "A simulator for carbon-aware applications and systems."
 keywords = ["simulation", "energy system", "testbed", "carbon-aware computing", "software-in-the-loop"]
 authors = ["Philipp Wiesner <wiesner@tu-berlin.de>"]
@@ -22,6 +22,7 @@ classifiers = [
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3 :: Only",
 ]
 
@@ -32,28 +33,31 @@ source = "git-tag"
 "Bug Reports" = "https://github.com/dos-group/vessim/issues"
 
 [tool.poetry.dependencies]
-python = "^3.8"
-# Mandatory dependencies
-pandas = "*"
-mosaik = "*"
-mosaik-api = "*"
-loguru = "*"
+python = ">=3.8,<3.13"
+numpy = [
+    { version = "^1.22.0", python = "<3.12" },
+    { version = "^1.26.0", python = ">=3.12" }
+]
+pandas = "^2.0.0"
+mosaik = "^3.2.0"
+mosaik-api-v3 = "^3.0.4"
+loguru = "^0.6.0"
+
+# The docopt, used by the mosaik-api causes some issues in current python versions
+# This dependency can be deleted once the following issue is resolved by mosaik
+# https://gitlab.com/mosaik/api/mosaik-api-python/-/issues/6
+docopt-ng = "^0.6.2"
+
 # Optional dependencies (software-in-the-loop)
-requests = {version = "*", optional = true}
-fastapi = {version = "*", optional = true}
-docker = {version = "*", optional = true}
-redis = {version = "*", optional = true}
-uvicorn = {version = "*", optional = true}
-# Optional dependencies (analysis)
-jupyterlab = {version = "*", optional = true}
-matplotlib = {version = "*", optional = true}
-seaborn = {version = "0.12.2", optional = true}
-nrel-pysam = "^4.2.0"
+requests = {version = "^2.26.0", optional = true}
+fastapi = {version = "^0.104.0", optional = true}
+uvicorn = {version = "^0.23.0", optional = true}
 
 [tool.poetry.extras]
-sil = ["requests", "fastapi", "docker", "redis", "uvicorn"]
-analysis = ["jupyterlab", "matplotlib", "seaborn"]
-dev = ["pytest", "mypy", "types-psutil", "pandas-stubs", "types-requests", "black", "ruff"]
+sil = ["requests", "fastapi", "uvicorn"]
+
+[tool.poetry.group.dev]
+optional = true
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
@@ -63,18 +67,34 @@ pandas-stubs = "*"
 types-requests = "*"
 black = "*"
 ruff = "*"
-setuptools = "^69.0.2"
+
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+setuptools = "*"
+sphinx = "*"
+furo = "*"
+sphinx-copybutton = "*"
+nbsphinx = "*"
+pandoc = "*"
+ipython = "*"
 
 [build-system]
-requires = ["poetry-core>=1.1.0"]
+requires = ["setuptools", "poetry-core>=1.1.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.black]
-line-length = 90  # Set the maximum characters per line
+line-length = 99  # Set the maximum characters per line
 target-version = ['py38']   # Set python versions that black should format the code for
 include = '\.py$'  # Format only python files
 
 [tool.ruff]
+line-length = 99  # Set the maximum characters per line (similar to black)
+target-version = "py38"  # Set python version for linting (similar to black)
+include = ["*.py"]  # Only enable linting for python files (similar to black)
+
+[tool.ruff.lint]
 # Enable Ruff to check for issues (https://beta.ruff.rs/docs/rules)
 select = [
   "E", "W",  # pycodestyle (error and warning)
@@ -96,17 +116,17 @@ ignore = ["D100", "D101", "D102", "D103", "D107", "E722"]
 fixable = ["D", "E", "W"]
 unfixable = ["F"]
 
-line-length = 90  # Set the maximum characters per line (similar to black)
-target-version = "py38"  # Set python version for linting (similar to black)
-include = ["*.py"]  # Only enable linting for python files (similar to black)
-
-# Exclude specific directories and all defaults
-extend-exclude = ["example_node", "simulator/power_meter.py", "carbon-aware_control_unit"]
-
+[tool.ruff.lint.pydocstyle]
 # Configure Ruff to enforce Google-style docstrings when checking documentation
-[tool.ruff.pydocstyle]
 convention = "google"
 
 # Configure mypy to ignore missing imports
 [mypy]
 ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "error",
+    # https://github.com/dateutil/dateutil/issues/1314
+    "ignore:datetime.datetime.utcfromtimestamp:DeprecationWarning:dateutil.tz.tz",
+]
