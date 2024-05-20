@@ -62,12 +62,12 @@ class ComputingSystem(Actor):
         self.pue = pue
 
     def p(self, now: datetime) -> float:
-        return self.pue * sum(-pm.measure() for pm in self.power_meters)
+        return self.pue * sum(-pm.measure(now) for pm in self.power_meters)
 
     def state(self, now: datetime) -> dict:
         return {
             "p": self.p(now),
-            "power_meters": {pm.name: -pm.measure() for pm in self.power_meters},
+            "power_meters": {pm.name: -pm.measure(now) for pm in self.power_meters},
         }
 
     def finalize(self) -> None:
