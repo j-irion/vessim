@@ -10,6 +10,16 @@ import math
 
 @hydra.main(config_path="data", config_name="config", version_base=None)
 def main(cfg):
+    turbine_rating = 1500  # kW
+
+    wind_config = cfg.windpower_cfg
+    farm_layout = automatic_farm_layout(
+        desired_farm_size=wind_config.system_capacity,
+        wind_turbine_kw_rating=turbine_rating,
+        wind_turbine_rotor_diameter=wind_config.wind_turbine_rotor_diameter,
+    )
+    wind_config = {**wind_config, **farm_layout}
+
     environment = Environment(sim_start="2020-06-11 00:00:00")
 
     monitor = Monitor()  # stores simulation result on each step
@@ -29,7 +39,7 @@ def main(cfg):
                 signal=SAMSignal(
                     model="Windpower",
                     weather_file=cfg.file_paths.wind_data,
-                    config_object=cfg.windpower_cfg,
+                    config_object=wind_config,
                 )
             ),
             # Generator(
