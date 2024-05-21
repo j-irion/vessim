@@ -363,6 +363,7 @@ class SAMSignal(Signal):
         if config_file is not None and config_object is not None:
             raise ValueError("Only one of 'config_file' or 'config_object' can be provided.")
 
+        # Number of rows of metadata in the weather file
         skiprows = 1
 
         if model == "Windpower":

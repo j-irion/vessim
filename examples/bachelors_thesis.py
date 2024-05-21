@@ -46,13 +46,13 @@ def main(cfg):
                     config_object=wind_config,
                 )
             ),
-            # Generator(
-            #     signal=SAMSignal(
-            #         model="Pvwattsv8",
-            #         weather_file=cfg.file_paths.solar_data,
-            #         config_file=cfg.file_paths.solar_config,
-            #     )
-            # ),
+            Generator(
+                signal=SAMSignal(
+                    model="Pvwattsv8",
+                    weather_file=cfg.file_paths.solar_data,
+                    config_file=cfg.file_paths.solar_config,
+                )
+            ),
         ],
         controllers=[monitor],
         step_size=60,  # global step size (can be overridden by actors or controllers)

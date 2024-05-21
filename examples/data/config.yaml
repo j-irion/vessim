@@ -20,5 +20,5 @@ file_paths:
   power_data: ${hydra:runtime.cwd}/./data/power_data.csv
   wind_data: ${hydra:runtime.cwd}/./data/WIND-Toolkit_lat44.32_lon-74.13_2014_5min_flat_lands_northern_ny.csv
   solar_data: ${hydra:runtime.cwd}/./data/solar_data.csv
-  solar_config: ${hydra:runtime.cwd}/./data/solar_config.json
+  solar_config: ${hydra:runtime.cwd}/./data/pvwatts_config.json
   wind_config: ${hydra:runtime.cwd}/./data/windpower_config.json
