@@ -14,15 +14,22 @@ import json
 def main(cfg):
     turbine_rating = 1500  # kW
 
+    # Create wind config object
     with open(cfg.file_paths.wind_config, "r", errors="replace") as file:
         wind_config = json.load(file)
     farm_layout = automatic_farm_layout(
-        desired_farm_size=cfg.system_capacity,
+        desired_farm_size=cfg.wind_system_capacity,
         wind_turbine_kw_rating=turbine_rating,
         wind_turbine_rotor_diameter=wind_config["wind_turbine_rotor_diameter"],
     )
 
-    wind_config = {**wind_config, **farm_layout, "system_capacity": cfg.system_capacity}
+    wind_config = {**wind_config, **farm_layout, "system_capacity": cfg.wind_system_capacity}
+
+    # Create solar config object
+    with open(cfg.file_paths.solar_config, "r", errors="replace") as file:
+        solar_config = json.load(file)
+
+    solar_config["system_capacity"] = cfg.solar_system_capacity
 
     environment = Environment(sim_start="2020-06-11 00:00:00")
 
@@ -50,7 +57,7 @@ def main(cfg):
                 signal=SAMSignal(
                     model="Pvwattsv8",
                     weather_file=cfg.file_paths.solar_data,
-                    config_file=cfg.file_paths.solar_config,
+                    config_object=solar_config,
                 )
             ),
         ],

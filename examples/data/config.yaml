@@ -9,16 +9,18 @@ hydra:
     direction: [minimize, minimize]
     study_name: multi-objective
     storage: null
-    n_trials: 20
+    n_trials: 50
     n_jobs: 1
     params:
-      system_capacity: range(1500, 9000, step=1500)
+      wind_system_capacity: range(1500, 6000, step=1500)
+      solar_system_capacity: range(1500, 9000, step=500)
 
-system_capacity: 1500
+wind_system_capacity: 1500
+solar_system_capacity: 1500
 
 file_paths:
-  power_data: ${hydra:runtime.cwd}/./data/power_data.csv
-  wind_data: ${hydra:runtime.cwd}/./data/WIND-Toolkit_lat44.32_lon-74.13_2014_5min_flat_lands_northern_ny.csv
-  solar_data: ${hydra:runtime.cwd}/./data/solar_data.csv
-  solar_config: ${hydra:runtime.cwd}/./data/pvwatts_config.json
-  wind_config: ${hydra:runtime.cwd}/./data/windpower_config.json
+  power_data: ${hydra:runtime.cwd}/data/power_data.csv
+  wind_data: ${hydra:runtime.cwd}/data/WIND-Toolkit_lat44.32_lon-74.13_2014_5min_flat_lands_northern_ny.csv
+  solar_data: ${hydra:runtime.cwd}/data/solar_data.csv
+  solar_config: ${hydra:runtime.cwd}/data/pvwatts_config.json
+  wind_config: ${hydra:runtime.cwd}/data/windpower_config.json
