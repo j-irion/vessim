@@ -12,6 +12,7 @@ from vessim._data import load_dataset
 from vessim._util import DatetimeLike
 
 import PySAM.Windpower
+import PySAM.Pvwattsv8
 import json
 
 
@@ -362,25 +363,34 @@ class SAMSignal(Signal):
         if config_file is not None and config_object is not None:
             raise ValueError("Only one of 'config_file' or 'config_object' can be provided.")
 
-        weather_data = pd.read_csv(weather_file, skiprows=1)
+        skiprows = 1
+
+        if model == "Windpower":
+            self.model = PySAM.Windpower.default("WindPowerNone")
+            self.model.Resource.wind_resource_filename = weather_file
+        elif model == "Pvwattsv8":
+            self.model = PySAM.Pvwattsv8.default("PVWattsNone")
+            self.model.SolarResource.solar_resource_file = weather_file
+            skiprows = 2
+        else:
+            raise ValueError(f"Model '{model}' not supported.")
+
+        weather_data = pd.read_csv(weather_file, skiprows=skiprows)
         weather_data["Datetime"] = pd.to_datetime(
             weather_data[["Year", "Month", "Day", "Hour", "Minute"]]
         )
         weather_data.set_index("Datetime", inplace=True)
         self.data = weather_data
 
-        if model == "Windpower":
-            self.model = PySAM.Windpower.default("WindPowerNone")
-            self.model.Resource.wind_resource_filename = weather_file
-        else:
-            raise ValueError(f"Model '{model}' not supported.")
-
         if config_file:
-            with open(config_file, 'r') as file:
+            with open(config_file, 'r', errors='replace') as file:
                 sam_data = json.load(file)
-                for k, v in sam_data.items():
-                    if k != 'number_inputs' and k != 'wind_resource_filename':
-                        self.model.value(k, v)
+        else:
+            sam_data = config_object
+
+        for k, v in sam_data.items():
+            if k not in ('number_inputs', 'wind_resource_filename', 'solar_resource_file'):
+                self.model.value(k, v)
 
         self.model.execute()
 
