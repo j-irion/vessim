@@ -8,6 +8,9 @@ import hydra
 import math
 import pandas as pd
 import json
+import logging
+
+log = logging.getLogger(__name__)
 
 
 @hydra.main(config_path="data", config_name="config", version_base=None)
@@ -125,7 +128,9 @@ def main(cfg):
 
     operational_carbon = merged_data["carbon_emissions"].sum()
 
-    merged_data.to_csv("merged_data.csv")
+    merged_data.to_csv(
+        hydra.core.hydra_config.HydraConfig.get().runtime.output_dir + "/merged_data.csv"
+    )
 
     return operational_carbon, embodied_carbon
 
