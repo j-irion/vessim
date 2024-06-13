@@ -12,7 +12,16 @@ import json
 
 @hydra.main(config_path="data", config_name="config", version_base=None)
 def main(cfg):
-    turbine_rating = 1500  # kW
+    all_turbines = pd.read_csv(cfg.file_paths.wind_turbines, on_bad_lines="warn")
+    turbine_data = all_turbines[all_turbines["Name"] == cfg.wind_turbine_model]
+    turbine_rating = int(turbine_data["kW Rating"].values[0])
+    turbine_rotor_diameter = int(turbine_data["Rotor Diameter"].values[0])
+    turbine_power_curve = [
+        float(value) for value in turbine_data["Power Curve Array"].values[0].split("|")
+    ]
+    turbine_wind_speeds = [
+        float(value) for value in turbine_data["Wind Speed Array"].values[0].split("|")
+    ]
 
     # Create wind config object
     with open(cfg.file_paths.wind_config, "r", errors="replace") as file:
@@ -20,10 +29,17 @@ def main(cfg):
     farm_layout = automatic_farm_layout(
         desired_farm_size=cfg.wind_system_capacity,
         wind_turbine_kw_rating=turbine_rating,
-        wind_turbine_rotor_diameter=wind_config["wind_turbine_rotor_diameter"],
+        wind_turbine_rotor_diameter=turbine_rotor_diameter,
     )
 
-    wind_config = {**wind_config, **farm_layout, "system_capacity": cfg.wind_system_capacity}
+    wind_config = {
+        **wind_config,
+        **farm_layout,
+        "system_capacity": cfg.wind_system_capacity,
+        "wind_turbine_powercurve_windspeeds": turbine_wind_speeds,
+        "wind_turbine_powercurve_powerout": turbine_power_curve,
+        "wind_turbine_rotor_diameter": turbine_rotor_diameter,
+    }
 
     # Create solar config object
     with open(cfg.file_paths.solar_config, "r", errors="replace") as file:
@@ -31,7 +47,7 @@ def main(cfg):
 
     solar_config["system_capacity"] = cfg.solar_system_capacity
 
-    environment = Environment(sim_start="2020-06-11 00:00:00")
+    environment = Environment(sim_start="2020-05-01 00:00:00")
 
     monitor = Monitor()  # stores simulation result on each step
     environment.add_microgrid(
@@ -51,31 +67,67 @@ def main(cfg):
                     model="Windpower",
                     weather_file=cfg.file_paths.wind_data,
                     config_object=wind_config,
-                )
+                ),
+                name="Wind",
             ),
             Generator(
                 signal=SAMSignal(
                     model="Pvwattsv8",
                     weather_file=cfg.file_paths.solar_data,
                     config_object=solar_config,
-                )
+                ),
+                name="Solar",
             ),
         ],
         controllers=[monitor],
         step_size=60,  # global step size (can be overridden by actors or controllers)
     )
 
-    environment.run(until=24 * 3600)  # 24h
+    environment.run(until=24 * 3600 * 14)  # 14 Tage
     monitor.to_csv("result.csv")
 
     # Load the CSV file and calculate statistics
-    df = pd.read_csv("result.csv")
+    df = pd.read_csv("result.csv", index_col=0, parse_dates=True)
     abs_p_delta = df["p_delta"].abs()
     avg_abs_p_delta = abs_p_delta.mean()
     std_abs_p_delta = abs_p_delta.std()
 
-    # Return the average and standard deviation of the absolute values of p_delta
-    return avg_abs_p_delta, std_abs_p_delta
+    # Calculate the embodied carbon of the wind power
+    sum_wind_power_watts = df["actor_infos.Wind.p"].sum()
+    total_wind_power_kWh = (sum_wind_power_watts / 1000) * (1 / 60)
+    embodied_carbon_wind_grams_co2 = 12 * total_wind_power_kWh
+
+    # Calculate the embodied carbon of the solar power
+    sum_solar_power_watts = df["actor_infos.Solar.p"].sum()
+    total_solar_power_kWh = (sum_solar_power_watts / 1000) * (1 / 60)
+    embodied_carbon_solar_grams_co2 = 70 * total_solar_power_kWh
+
+    embodied_carbon = embodied_carbon_wind_grams_co2 + embodied_carbon_solar_grams_co2
+
+    # Calculate the operational carbon
+    carbon_data = pd.read_csv(cfg.file_paths.carbon_data, index_col=0, parse_dates=True)
+
+    carbon_data.index = carbon_data.index.tz_localize(None)
+
+    carbon_data_resampled = carbon_data.resample("60S").ffill()
+    carbon_data_filtered = carbon_data_resampled.loc[df.index.min() : df.index.max()]
+
+    merged_data = df.merge(carbon_data_filtered, left_index=True, right_index=True, how="left")
+
+    merged_data["carbon_emissions"] = merged_data.apply(
+        lambda row: (
+            (-1 * row["p_delta"] / 1000 * (1 / 60) * row["carbon_intensity"])
+            if row["p_delta"] < 0
+            else 0
+        ),
+        axis=1,
+    )
+
+    operational_carbon = merged_data["carbon_emissions"].sum()
+
+    merged_data.to_csv("merged_data.csv")
+
+    return operational_carbon, embodied_carbon
 
 
 def automatic_farm_layout(
