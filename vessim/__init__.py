@@ -1,22 +1,34 @@
 """A simulator for carbon-aware applications and systems."""
-from vessim import actor
-from vessim import controller
-from vessim import cosim
-from vessim import power_meter
-from vessim import signal
-from vessim import storage
+
+from vessim.actor import ActorBase, Actor, ComputingSystem
+from vessim.controller import Controller, Monitor
+from vessim.cosim import Microgrid, Environment
+from vessim.policy import MicrogridPolicy, DefaultMicrogridPolicy
+from vessim.signal import Signal, HistoricalSignal, MockSignal, CollectorSignal
+from vessim.storage import Storage, SimpleBattery, ClcBattery
 
 __all__ = [
-    "signal",
-    "cosim",
-    "actor",
-    "controller",
-    "storage",
-    "power_meter",
+    "ActorBase",
+    "Actor",
+    "ComputingSystem",
+    "Controller",
+    "Monitor",
+    "Microgrid",
+    "Environment",
+    "MicrogridPolicy",
+    "DefaultMicrogridPolicy",
+    "CollectorSignal",
+    "MockSignal",
+    "Signal",
+    "HistoricalSignal",
+    "Storage",
+    "ClcBattery",
+    "SimpleBattery",
 ]
 
 try:
-    import vessim.sil  # noqa: F401
-    __all__.append("sil")
+    from vessim.sil import Broker, SilController, WatttimeSignal, get_latest_event  # noqa: F401
+
+    __all__.extend(["Broker", "SilController", "WatttimeSignal", "get_latest_event"])
 except ImportError:
     pass

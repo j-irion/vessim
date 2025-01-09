@@ -33,16 +33,16 @@ Controller Module
 
     controller
 
+Policy Module
+-------------
+.. toctree::
+    :maxdepth: 2
+
+    policy
+
 Storage Module
 --------------
 .. toctree::
     :maxdepth: 2
 
     storage
-
-Power-Meter Module
-------------------
-.. toctree::
-    :maxdepth: 2
-
-    power_meter

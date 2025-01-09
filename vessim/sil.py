@@ -5,13 +5,15 @@ This module is still experimental, the public API might change at any time.
 
 from __future__ import annotations
 
-import multiprocessing
-from queue import Empty as QueueEmpty
+from multiprocessing import Process, Pipe
+from multiprocessing.connection import Connection
 from collections import defaultdict
 from datetime import datetime, timedelta
-from threading import Thread
-from time import sleep
-from typing import Any, Optional, Callable, Iterable
+from threading import Thread, Lock
+from typing import Any, Optional, Callable
+from bisect import bisect_left, bisect_right
+import numpy as np
+import time
 
 import pandas as pd
 import requests
@@ -25,76 +27,94 @@ from vessim.signal import Signal
 from vessim._util import DatetimeLike
 
 
-def _iterate_queue(q: multiprocessing.Queue, timeout: Optional[float] = None) -> Iterable[Any]:
-    blocking = timeout is not None
-    while True:
-        try:
-            yield q.get(blocking, timeout)
-        except QueueEmpty:
-            break
-
-
 class Broker:
-    def __init__(self, queue_size: int = 0):
-        # Note: Any objects put onto queues are automatically pickled and depickled when retrieved.
-        self._outgoing_events_queue: Optional[multiprocessing.Queue] = multiprocessing.Queue(
-            maxsize=queue_size
-        )
-        self._incoming_data_queue: Optional[multiprocessing.Queue] = multiprocessing.Queue(
-            maxsize=queue_size
-        )
+    def __init__(self, data_pipe_out: Connection, events_pipe_in: Connection):
+        self._data_pipe_out = data_pipe_out
+        self._events_pipe_in = events_pipe_in
+        self._microgrid_ts: list[tuple[DatetimeLike, Microgrid]] = []
+        self._state_ts: list[tuple[DatetimeLike, dict]] = []
+        self._p_delta_ts: list[tuple[DatetimeLike, float]] = []
+        self._e_delta_ts: list[tuple[DatetimeLike, float]] = []
+        self._time: Optional[DatetimeLike] = None
         self._microgrid: Optional[Microgrid] = None
-        self._actor_infos: Optional[dict] = None
-        self._p_delta: Optional[float] = None
+        self._state: dict[str, dict] = {}
+        self._p_delta: float = 0
+        self._e_delta: float = 0
+        self._ts_lock: Lock = Lock()
 
-    def get_microgrid(self) -> Microgrid:
-        self._process_incoming_data()
-        assert self._microgrid is not None
-        return self._microgrid
-
-    def get_actor(self, actor: str) -> dict:
-        self._process_incoming_data()
-        assert self._actor_infos is not None
-        return self._actor_infos
-
-    def get_p_delta(self) -> float:
-        self._process_incoming_data()
-        assert self._p_delta is not None
-        return self._p_delta
+    def _recv_data(self) -> None:
+        while True:
+            time, data = self._data_pipe_out.recv()
+            self._time = time
+            self._microgrid = data["microgrid"]
+            self._state = data["state"]
+            self._p_delta = data["p_delta"]
+            self._e_delta = data["e_delta"]
+            with self._ts_lock:
+                assert isinstance(time, (str, datetime, np.datetime64))
+                assert self._microgrid is not None
+                self._microgrid_ts.append((time, self._microgrid))
+                self._state_ts.append((time, self._state))
+                self._p_delta_ts.append((time, self._p_delta))
+                self._e_delta_ts.append((time, self._e_delta))
 
     def set_event(self, category: str, value: Any) -> None:
-        if self._outgoing_events_queue is not None:
-            self._outgoing_events_queue.put(
-                {
-                    "category": category,
-                    "time": datetime.now(),
-                    "value": value,
-                }
-            )
+        self._events_pipe_in.send(
+            {
+                "category": category,
+                "time": datetime.now(),
+                "value": value,
+            }
+        )
 
-    def _add_microgrid_data(self, time: datetime, data: dict) -> None:
-        if self._incoming_data_queue is not None:
-            self._incoming_data_queue.put((time, data))
+    @property
+    def time(self) -> DatetimeLike | None:
+        return self._time
 
-    def _consume_events(self) -> Iterable[dict]:
-        if self._outgoing_events_queue is not None:
-            yield from _iterate_queue(self._outgoing_events_queue)
+    @property
+    def microgrid(self) -> Microgrid | None:
+        return self._microgrid
 
-    # TODO-now note that this should really be run periodically
-    def _process_incoming_data(self) -> None:
-        if self._incoming_data_queue is not None:
-            for time, data in _iterate_queue(self._incoming_data_queue):
-                self._microgrid = data.pop("microgrid", self._microgrid)
-                self._actor_infos = data.pop("actor_infos", self._actor_infos)
-                self._p_delta = data.pop("p_delta", self._p_delta)
+    @property
+    def p_delta(self) -> float:
+        return self._p_delta
 
-    def _finalize(self) -> None:
-        assert self._outgoing_events_queue is not None
-        self._outgoing_events_queue.close()
-        self._outgoing_events_queue = None
-        assert self._incoming_data_queue is not None
-        self._incoming_data_queue.close()
-        self._incoming_data_queue = None
+    @property
+    def e_delta(self) -> float:
+        return self._e_delta
+
+    @property
+    def state(self) -> dict[str, dict]:
+        return self._state
+
+    def _get_ts_range(
+        self, ts_attr: str, start_time: Optional[DatetimeLike], end_time: Optional[DatetimeLike]
+    ) -> list[tuple[DatetimeLike, Any]]:
+        with self._ts_lock:
+            ts = getattr(self, ts_attr).copy()
+        start_idx = 0 if start_time is None else bisect_left(ts, (start_time,))
+        end_idx = len(ts) if end_time is None else bisect_right(ts, (end_time,))
+        return ts[start_idx:end_idx]
+
+    def get_microgrid_ts(
+        self, start_time: Optional[DatetimeLike] = None, end_time: Optional[DatetimeLike] = None
+    ) -> list[tuple[DatetimeLike, Microgrid]]:
+        return self._get_ts_range("_microgrid_ts", start_time, end_time)
+
+    def get_state_ts(
+        self, start_time: Optional[DatetimeLike] = None, end_time: Optional[DatetimeLike] = None
+    ) -> list[tuple[DatetimeLike, dict[str, dict]]]:
+        return self._get_ts_range("_state_ts", start_time, end_time)
+
+    def get_p_delta_ts(
+        self, start_time: Optional[DatetimeLike] = None, end_time: Optional[DatetimeLike] = None
+    ) -> list[tuple[DatetimeLike, float]]:
+        return self._get_ts_range("_p_delta_ts", start_time, end_time)
+
+    def get_e_delta_ts(
+        self, start_time: Optional[DatetimeLike] = None, end_time: Optional[DatetimeLike] = None
+    ) -> list[tuple[DatetimeLike, float]]:
+        return self._get_ts_range("_e_delta_ts", start_time, end_time)
 
 
 class SilController(Controller):
@@ -107,7 +127,6 @@ class SilController(Controller):
         api_port: int = 8000,
         request_collector_interval: float = 1,
         step_size: Optional[int] = None,
-        **kwargs,
     ):
         super().__init__(step_size=step_size)
         self.api_routes = api_routes
@@ -116,16 +135,17 @@ class SilController(Controller):
         self.api_host = api_host
         self.api_port = api_port
         self.request_collector_interval = request_collector_interval
-        self.kwargs = kwargs
-        self.broker = Broker()
-
         self.microgrid: Optional[Microgrid] = None
+
+        self.events_pipe_out, events_pipe_in = Pipe(duplex=False)
+        data_pipe_out, self.data_pipe_in = Pipe(duplex=False)
+        self.broker = Broker(data_pipe_out, events_pipe_in)
 
     def start(self, microgrid: Microgrid) -> None:
         self.microgrid = microgrid
         name = f"Vessim API for microgrid {id(self.microgrid)}"
 
-        multiprocessing.Process(
+        Process(
             target=_serve_api,
             name=name,
             daemon=True,
@@ -141,32 +161,34 @@ class SilController(Controller):
 
         Thread(target=self._collect_set_requests_loop, daemon=True).start()
 
-    def step(self, time: datetime, p_delta: float, actor_infos: dict) -> None:
+    def step(self, time: datetime, p_delta: float, e_delta: float, state: dict) -> None:
         assert self.microgrid is not None
-        self.broker._add_microgrid_data(
-            time,
-            {
-                "microgrid": self.microgrid,
-                "actor_infos": actor_infos,
-                "p_delta": p_delta,
-            },
+        self.data_pipe_in.send(
+            (
+                time,
+                {
+                    "microgrid": self.microgrid,
+                    "state": state,
+                    "p_delta": p_delta,
+                    "e_delta": e_delta,
+                },
+            )
         )
-
-    def finalize(self) -> None:
-        self.broker._finalize()
 
     def _collect_set_requests_loop(self):
         while True:
+            start_time = time.monotonic()
             events_by_category = defaultdict(dict)
-            for event in self.broker._consume_events():
+            while self.events_pipe_out.poll():
+                event = self.events_pipe_out.recv()
                 events_by_category[event["category"]][event["time"]] = event["value"]
             for category, events in events_by_category.items():
-                self.request_collectors[category](
-                    events=events_by_category[category],
-                    microgrid=self.microgrid,
-                    kwargs=self.kwargs,
-                )
-            sleep(self.request_collector_interval)
+                self.request_collectors[category](self, events=events)
+            # Calculate elapsed time and sleep if necessary
+            elapsed_time = time.monotonic() - start_time
+            time_to_wait = self.request_collector_interval - elapsed_time
+            if time_to_wait > 0:
+                time.sleep(time_to_wait)
 
 
 def _serve_api(
@@ -176,12 +198,12 @@ def _serve_api(
     broker: Broker,
     grid_signals: dict[str, Signal],
 ):
+    Thread(target=broker._recv_data, daemon=True).start()
     app = FastAPI()
     api_routes(app, broker, grid_signals)
     config = uvicorn.Config(app=app, host=api_host, port=api_port, access_log=False)
     server = uvicorn.Server(config=config)
     server.run()
-    broker._finalize()
 
 
 def get_latest_event(events: dict[datetime, Any]) -> Any:
@@ -196,22 +218,24 @@ class WatttimeSignal(Signal):
         self.password = password
         self.headers = {"Authorization": f"Bearer {self._login()}"}
 
-    def at(
+    def now(
         self,
-        dt: DatetimeLike,
+        at: Optional[DatetimeLike] = None,
         region: Optional[str] = None,
         signal_type: str = "co2_moer",
         **kwargs,
     ):
         if region is None:
             raise ValueError("Region needs to be specified.")
-        dt = pd.to_datetime(dt)
+        if at is None:
+            raise ValueError("dt needs to be specified.")
+        at = pd.to_datetime(at)
         rsp = self._request(
             "/historical",
             params={
                 "region": region,
-                "start": (dt - timedelta(minutes=5)).isoformat(),
-                "end": dt.isoformat(),
+                "start": (at - timedelta(minutes=5)).isoformat(),
+                "end": at.isoformat(),
                 "signal_type": signal_type,
             },
         )

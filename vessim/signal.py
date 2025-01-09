@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from datetime import timedelta, datetime
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Optional, Literal
+from itertools import count
+from threading import Event, Thread
 
+import time
 import pandas as pd
 import numpy as np
 
@@ -19,9 +22,15 @@ import json
 class Signal(ABC):
     """Abstract base class for signals."""
 
+    def __init__(self, name: Optional[str] = None) -> None:
+        self.name = name
+
     @abstractmethod
-    def at(self, dt: DatetimeLike, **kwargs):
+    def now(self, at: Optional[DatetimeLike] = None, **kwargs) -> float:
         """Retrieves actual data point at given time."""
+
+    def finalize(self) -> None:
+        """Perform necessary finalization tasks of a signal."""
 
 
 class HistoricalSignal(Signal):
@@ -51,14 +60,26 @@ class HistoricalSignal(Signal):
 
         fill_method: Either `ffill` or `bfill`. Determines how actual data is acquired in
             between timestamps. Default is `ffill`.
+
+        column: Default column to be used if no column is specified for at().
+            Defaults to None.
     """
 
     def __init__(
-            self,
-            actual: pd.Series | pd.DataFrame,
-            forecast: Optional[pd.Series | pd.DataFrame] = None,
-            fill_method: Literal["ffill", "bfill"] = "ffill",
+        self,
+        actual: pd.Series | pd.DataFrame,
+        forecast: Optional[pd.Series | pd.DataFrame] = None,
+        fill_method: Literal["ffill", "bfill"] = "ffill",
+        column: Optional[str] = None,
     ):
+        if isinstance(actual, pd.DataFrame) and forecast is not None:
+            if isinstance(forecast, pd.DataFrame):
+                if not actual.columns.equals(forecast.columns):
+                    raise ValueError("Column names in actual and forecast do not match.")
+            else:
+                raise ValueError("Forecast has to be a DataFrame if actual is a DataFrame.")
+
+        self.default_column = column
         self._fill_method = fill_method
         # Unpack index of actual dataframe
         actual_times = actual.index.to_numpy(dtype="datetime64[ns]", copy=True)
@@ -122,16 +143,19 @@ class HistoricalSignal(Signal):
             raise ValueError(f"Incompatible type {type(forecast)} for 'forecast'.")
 
     @classmethod
-    def from_dataset(
-            cls,
-            dataset: str,
-            data_dir: Optional[str | Path] = None,
-            params: Optional[dict[Any, Any]] = None,
+    def load(
+        cls,
+        dataset: str,
+        column: Optional[str] = None,
+        data_dir: Optional[str | Path] = None,
+        params: Optional[dict[Any, Any]] = None,
     ):
         """Creates a HistoricalSignal from a vessim dataset, handling downloading and unpacking.
 
         Args:
             dataset: Name of the dataset to be downloaded.
+            column: Default column to use for calling HistoricalSignal.at().
+                Default to None.
             data_dir: Absoulute path to the directory where the data should be loaded.
                 If not specified, the path `~/.cache/vessim` is used. Defaults to None.
             params: Optional extra parameters used for data loading.
@@ -144,20 +168,22 @@ class HistoricalSignal(Signal):
         """
         if params is None:
             params = {}
-        return cls(**load_dataset(dataset, _abs_path(data_dir), params))
+        return cls(**load_dataset(dataset, _abs_path(data_dir), params), column=column)
 
     def columns(self) -> list:
         """Returns a list of all columns where actual data is available."""
         return list(self._actual.keys())
 
-    def at(self, dt: DatetimeLike, column: Optional[str] = None, **kwargs) -> float:
+    def now(
+        self, at: Optional[DatetimeLike] = None, column: Optional[str] = None, **kwargs
+    ) -> float:
         """Retrieves actual data point of zone at given time.
 
         If queried timestamp is not available in the `actual` dataframe, the fill_method
         is used to determine the data point.
 
         Args:
-            dt: Timestamp, at which data is returned.
+            at: Timestamp, at which data is returned.
             column: Optional column for the data. Has to be provided if there is more than one
                 column specified in the data. Defaults to None.
             **kwargs: Possibly needed for subclasses. Are not supported in this class and a
@@ -166,10 +192,14 @@ class HistoricalSignal(Signal):
         Raises:
             ValueError: If there is no available data at zone or time, or extra kwargs specified.
         """
+        if at is None:
+            raise ValueError("Argument dt cannot be None.")
         if kwargs:
             raise ValueError(f"Invalid arguments: {kwargs.keys()}")
+        if column is None:
+            column = self.default_column
 
-        np_dt = np.datetime64(dt)
+        np_dt = np.datetime64(at)
         times, values = self._actual[_get_column_name(self._actual, column)]
 
         if self._fill_method == "ffill":
@@ -177,21 +207,21 @@ class HistoricalSignal(Signal):
             if index >= 0:
                 return values[index]
             else:
-                raise ValueError(f"'{dt}' is too early to get data in column '{column}'.")
+                raise ValueError(f"'{at}' is too early to get data in column '{column}'.")
         else:
             index = times.searchsorted(np_dt, side="left")
             try:
                 return values[index]
             except IndexError:
-                raise ValueError(f"'{dt}' is too late to get data in column '{column}'.")
+                raise ValueError(f"'{at}' is too late to get data in column '{column}'.")
 
     def forecast(
-            self,
-            start_time: DatetimeLike,
-            end_time: DatetimeLike,
-            column: Optional[str] = None,
-            frequency: Optional[str | timedelta] = None,
-            resample_method: Optional[Literal["ffill", "bfill", "linear", "nearest"]] = None,
+        self,
+        start_time: DatetimeLike,
+        end_time: DatetimeLike,
+        column: Optional[str] = None,
+        frequency: Optional[str | timedelta] = None,
+        resample_method: Optional[Literal["ffill", "bfill", "linear", "nearest"]] = None,
     ) -> dict[np.datetime64, float]:
         """Retrieves forecasted data points within window at a frequency.
 
@@ -264,6 +294,9 @@ class HistoricalSignal(Signal):
             {numpy.datetime64('2020-01-01T01:30:00'): 4.4,
             numpy.datetime64('2020-01-01T01:50:00'): 2.8}
         """
+        if column is None:
+            column = self.default_column
+
         np_start = np.datetime64(start_time)
         np_end = np.datetime64(end_time)
         if self._forecast is None:
@@ -321,10 +354,27 @@ class HistoricalSignal(Signal):
         )
 
         new_times_indices = np.searchsorted(times, new_times, side="left")
-        if not np.array_equal(new_times, times[new_times_indices]) and resample_method != "bfill":
+        if np.all(new_times_indices < times.size) and np.array_equal(
+            new_times, times[new_times_indices]
+        ):
+            # No resampling necessary
+            new_data = data[new_times_indices]
+        elif resample_method == "bfill":
+            # Perform backward-fill whereas values outside range are filled with NaN
+            new_data = np.full(new_times_indices.shape, np.nan)
+            valid_mask = new_times_indices < len(data)
+            new_data[valid_mask] = data[new_times_indices[valid_mask]]
+        else:
             # Actual value is used for interpolation
             times = np.insert(times, 0, start_time)
-            data = np.insert(data, 0, self.at(start_time, column))
+            # https://github.com/dos-group/vessim/issues/234
+            # Use the length of the actual data to determine the column:
+            # self._actual is a dict[str, tuple[np.ndarray, np.ndarray]]
+            # -> every key is a column name
+            # -> if len(self._actual) == 1, _actual is based on pd.Series and column is None
+            data = np.insert(
+                data, 0, self.now(start_time, None if len(self._actual) == 1 else column)
+            )
             if resample_method == "ffill":
                 new_data = data[np.searchsorted(times, new_times, side="right") - 1]
             elif resample_method == "nearest":
@@ -339,8 +389,6 @@ class HistoricalSignal(Signal):
                 raise ValueError(f"Unknown resample_method '{resample_method}'.")
             else:
                 raise ValueError(f"Not enough data at frequency '{freq}' without resampling.")
-        else:
-            new_data = data[new_times_indices]
 
         return dict(zip(new_times, new_data))
 
@@ -428,6 +476,121 @@ class SAMSignal(Signal):
         )
         idx = self.data.index.get_loc(datetime_obj)
         return idx
+
+
+class MockSignal(Signal):
+    _ids = count(0)
+
+    def __init__(self, value: float, name: Optional[str] = None) -> None:
+        if name is None:
+            name = f"MockSignal-{next(self._ids)}"
+        super().__init__(name)
+        self._v = value
+
+    def set_value(self, value: float) -> None:
+        self._v = value
+
+    def now(self, at: Optional[DatetimeLike] = None, **kwargs):
+        return self._v
+
+
+class CollectorSignal(Signal, ABC):
+    def __init__(self, interval: int = 1):
+        super().__init__()
+        self.interval = interval
+        self._v = 0.0
+        self._stop_event = Event()
+        self._thread = Thread(target=self._collect_loop, daemon=True)
+        self._thread.start()
+
+    def now(self, at=None, **_) -> float:
+        return self._v
+
+    @abstractmethod
+    def collect(self) -> float:
+        pass
+
+    def _collect_loop(self) -> None:
+        while not self._stop_event.is_set():
+            self._v = self.collect()
+            time.sleep(self.interval)
+
+    def finalize(self) -> None:
+        self._stop_event.set()
+        self._thread.join()
+
+
+class FilePowerMeter(PowerMeter):
+    def __init__(self, file_path: str, unit: Optional[str] = "W", date_format: Optional[str] = None, name: Optional[str] = None):
+        if name is None:
+            name = f"FilePowerMeter-{next(self._ids)}"
+        super().__init__(name)
+        self.data = self._load_data(file_path, date_format)
+        self.unit = unit
+
+    @staticmethod
+    def _load_data(file_path: str, date_format: Optional[str]) -> pd.DataFrame:
+        """Load data from a CSV file.
+
+        Args:
+            file_path: Path to the CSV file.
+            date_format: The format of the date in the CSV file.
+
+        Returns:
+            The loaded data as a pandas DataFrame.
+
+        Raises:
+            ValueError: If the time index is not monotonic increasing or decreasing, or not unique.
+        """
+        data = pd.read_csv(file_path, names=['time', 'power'], skiprows=1)
+        if date_format:
+            data['time'] = pd.to_datetime(data['time'], format=date_format)
+        else:
+            data['time'] = pd.to_datetime(data['time'])
+        data.set_index('time', inplace=True)
+        data.sort_index(inplace=True)
+        if not data.index.is_monotonic_increasing or data.index.is_monotonic_decreasing:
+            raise ValueError("The time index must be monotonic increasing or decreasing.")
+        if not data.index.is_unique:
+            raise ValueError("The time index must be unique.")
+        return data
+
+    @staticmethod
+    def _convert_power_to_watts(power: float, unit: str) -> float:
+        """Convert the power to watts.
+
+        Args:
+            power: The power to be converted.
+            unit: The unit of the power.
+
+        Returns:
+            The power in watts.
+        """
+        if unit == "W":
+            return power
+        elif unit == "kW":
+            return power * 1e3
+        elif unit == "MW":
+            return power * 1e6
+        else:
+            raise ValueError(f"Unknown unit: {unit}")
+
+    def measure(self, now: datetime) -> float:
+        """Measure the power at the given time.
+
+        Args:
+            now: The current time.
+
+        Returns:
+            The power at the given time.
+
+        Raises:
+            ValueError: If no data is available before all available data points.
+        """
+        last_valid_time = self.data.index.asof(now)
+        if pd.isna(last_valid_time):
+            raise ValueError(f"No data available before or at {now}")
+        return self._convert_power_to_watts(float(self.data.at[last_valid_time, 'power']), self.unit)
 
 
 def _get_column_name(data: dict[str, Any], column: Optional[str]) -> str:

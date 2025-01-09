@@ -23,23 +23,21 @@ Vessim can simulate large numbers of microgrids in parallel, comes with ready-to
 The scenario below simulates a microgrid consisting of a simulated computing system (which consistently draws 400W), a single producer (a solar power plant who's production is modelled based on a dataset provided by [Solcast](https://solcast.com/)), and a battery. The *Monitor* periodically stores the energy system state.
 
 ```python
-from vessim.actor import ComputingSystem, Generator
-from vessim.controller import Monitor
-from vessim.cosim import Environment
-from vessim.power_meter import MockPowerMeter
-from vessim.signal import HistoricalSignal
-from vessim.storage import SimpleBattery
+import vessim as vs
 
-environment = Environment(sim_start="15-06-2022")
+environment = vs.Environment(sim_start="2022-06-15")
 
-monitor = Monitor()
+monitor = vs.Monitor()
 environment.add_microgrid(
     actors=[
-        ComputingSystem(power_meters=[MockPowerMeter(p=400)]),
-        Generator(signal=HistoricalSignal.from_dataset("solcast2022_global"), column="Berlin"),
+        vs.ComputingSystem(nodes=[vs.MockSignal(value=400)]),
+        vs.Actor(
+            name="solar_panel",
+            signal=vs.HistoricalSignal.load("solcast2022_global", column="Berlin")
+        ),
     ],
     controllers=[monitor],
-    storage=SimpleBattery(capacity=100),
+    storage=vs.SimpleBattery(capacity=100),
     step_size=60,
 )
 
@@ -50,7 +48,7 @@ monitor.to_csv("result.csv")
 
 ## Installation
 
-You can install the [latest release](https://pypi.org/project/vessim/) of Vessim 
+You can install the [latest release](https://pypi.org/project/vessim/) of Vessim
 via [pip](https://pip.pypa.io/en/stable/quickstart/):
 
 ```
@@ -71,10 +69,11 @@ For complex scenarios that involve custom co-simulation actors we recommend clon
 Our team at the [Distributed and Operating Systems](https://distributedsystems.berlin/) group at TU Berlin is actively working to improve Vessim.
 We are currently working on the following aspects and features:
 
-- **Software-in-the-loop API**: We will soon release a new API for SiL simulations with new examples and better documentation.
+- **Calibration**: We are working on a methodology for calibrating Vessim simulations on real hardware testbeds.
 - **System Advisor Model (SAM)**: We are working on integrating NREL's [SAM](https://sam.nrel.gov/) as a subsystem in Vessim, allowing for better simulation of solar arrays, wind farms, and other types of renewable energy generators.
-- **Flower**: We are working on integrating Vessim into the federated learning framework [Flower](https://flower.ai).
-- **Validation**: We are working on validating the accuracy of Vessim compared to real hardware testbeds.
+- **Battery degradation**: We are working on integrating NREL's [BLAST-Lite](https://github.com/NREL/BLAST-Lite) for modeling battery lifetime and degradation
+- **Vessim X Flower**: We are working on integrating Vessim into the federated learning framework [Flower](https://flower.ai).
+- **Software-in-the-loop API**: We will soon release a new API for SiL simulations with new examples and better documentation.
 
 
 ## Datasets
@@ -92,34 +91,33 @@ We're working on documentation on how to include custom datasets for your simula
 
 ## Publications
 
-If you use Vessim in your research, please cite our paper on software-in-the-loop simulation for carbon-aware applications:
+If you use Vessim in your research, please cite our paper:
 
-Philipp Wiesner, Marvin Steinke, Henrik Nickel, Yazan Kitana, and Odej Kao. "[Software-in-the-Loop Simulation for Developing and Testing Carbon-Aware Applications](https://doi.org/10.1002/spe.3275)" Software: Practice and Experience, 53 (12). 2023.
+- Philipp Wiesner, Ilja Behnke, Paul Kilian, Marvin Steinke, and Odej Kao. "[Vessim: A Testbed for Carbon-Aware Applications and Systems.](https://arxiv.org/pdf/2306.09774.pdf)" _3rd Workshop on Sustainable Computer Systems (HotCarbon)_. 2024.
+
+```
+@inproceedings{wiesner2024vessim,
+    title     = {Vessim: A Testbed for Carbon-Aware Applications and Systems},
+    author    = {Wiesner, Philipp and Behnke, Ilja and Kilian, Paul and Steinke, Marvin and Kao, Odej},
+    booktitle = {3rd Workshop on Sustainable Computer Systems (HotCarbon)},
+    year      = {2024},
+}
+```
+
+For details in Vessim's software-in-the-loop simulation methodology, refer to our journal paper:
+
+- Philipp Wiesner, Marvin Steinke, Henrik Nickel, Yazan Kitana, and Odej Kao. "[Software-in-the-Loop Simulation for Developing and Testing Carbon-Aware Applications.](https://doi.org/10.1002/spe.3275)" _Software: Practice and Experience, 53 (12)_. 2023.
 
 ```
 @article{wiesner2023sil,
-    author = {Wiesner, Philipp and Steinke, Marvin and Nickel, Henrik and Kitana, Yazan and Kao, Odej},
-    title = {Software-in-the-loop simulation for developing and testing carbon-aware applications},
-    journal = {Software: Practice and Experience},
-    year = {2023},
-    volume = {53},
-    number = {12},
-    pages = {2362-2376},
-    doi = {https://doi.org/10.1002/spe.3275}
+    author    = {Wiesner, Philipp and Steinke, Marvin and Nickel, Henrik and Kitana, Yazan and Kao, Odej},
+    title     = {Software-in-the-loop simulation for developing and testing carbon-aware applications},
+    journal   = {Software: Practice and Experience},
+    year      = {2023},
+    volume    = {53},
+    number    = {12},
+    pages     = {2362-2376},
+    doi       = {https://doi.org/10.1002/spe.3275}
 }
 ```
 
-Also have a look at our overall vision paper:
-
-Philipp Wiesner, Ilja Behnke and Odej Kao. "[A Testbed for Carbon-Aware Applications and Systems](https://arxiv.org/pdf/2306.09774.pdf)" arXiv:2302.08681 [cs.DC]. 2023.
-
-```
-@misc{wiesner2023vessim,
-    title={A Testbed for Carbon-Aware Applications and Systems}, 
-    author={Wiesner, Philipp and Behnke, Ilja and Kao, Odej},
-    year={2023},
-    eprint={2306.09774},
-    archivePrefix={arXiv},
-    primaryClass={cs.DC}
-}
-```

@@ -3,7 +3,11 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, TYPE_CHECKING, MutableMapping, Optional, Callable
+from pathlib import Path
+from csv import DictWriter
+from itertools import count
+from collections.abc import Iterator
+from typing import Any, MutableMapping, Optional, Callable, TYPE_CHECKING
 
 import mosaik_api_v3  # type: ignore
 import pandas as pd
@@ -15,70 +19,96 @@ if TYPE_CHECKING:
 
 
 class Controller(ABC):
-    def __init__(self, step_size: Optional[int] = None):
+    _counters: dict[type[Controller], Iterator[int]] = {}
+
+    def __init_subclass__(cls, **kwargs) -> None:
+        """Initializes the subclass and sets up a counter for naming."""
+        super().__init_subclass__(**kwargs)
+        cls._counters[cls] = count()
+
+    def __init__(self, step_size: Optional[int] = None) -> None:
+        cls = self.__class__
+        self.name: str = f"{cls.__name__}-{next(cls._counters[cls])}"
         self.step_size = step_size
+        self.set_parameters: dict[str, Any] = {}
 
-    @abstractmethod
     def start(self, microgrid: Microgrid) -> None:
-        """Supplies the controller with objects available after simulation start.
-
-        Args:
-            microgrid: The microgrid under control.
-        """
+        """Function to be executed before simulation is started. Can be overridden."""
+        pass
 
     @abstractmethod
-    def step(self, time: datetime, p_delta: float, actor_infos: dict) -> None:
+    def step(self, time: datetime, p_delta: float, e_delta: float, state: dict) -> None:
         """Performs a simulation step.
 
         Args:
             time: Current datetime.
-            p_delta: Current power delta from the microgrid after the storage has been
-                (de)charged. If negative, this power must be drawn from the public grid.
-                If positive, the power can be fed to the public grid or must be curtailed.
-            actor_infos: Contains the last "info" dictionaries by all actors in the
-                microgrid. The info dictionary is defined by the actor and can contain
-                any information about the actor's state.
+            p_delta: Power delta in W based on the consumption and production of all actors.
+            e_delta: Total energy in Ws that has been drawn from/ fed to the utility grid
+                in the previous time step.
+            state: Contains the last state dictionaries by all actors, the policy, and the storage
+                in the microgrid. The state dictionary is defined by the microgrid components and
+                can contain any information about their custom defined state.
+                The keys are the actor names, `policy`, and `storage` respectively.
         """
 
     def finalize(self) -> None:
-        """This method can be overridden clean-up after the simulation finished."""
+        """Function to be executed after simulation has ended. Can be overridden for clean-up."""
+        pass
 
 
 class Monitor(Controller):
     def __init__(
         self,
         step_size: Optional[int] = None,
+        outfile: Optional[str | Path] = None,
         grid_signals: Optional[dict[str, Signal]] = None,
     ):
         super().__init__(step_size=step_size)
-        self.grid_signals = grid_signals
+        self.outpath: Optional[Path] = None
+        if outfile:
+            self.outpath = Path(outfile).expanduser()
+        self._fieldnames: Optional[list] = None
+
         self.monitor_log: dict[datetime, dict] = defaultdict(dict)
         self.custom_monitor_fns: list[Callable] = []
 
-    def start(self, microgrid: Microgrid) -> None:
-        if microgrid.storage is not None:
-            storage_state = microgrid.storage.state()
-            self.add_monitor_fn(lambda _: {"storage": storage_state})
-
-        if self.grid_signals is not None:
-            for signal_name, signal_api in self.grid_signals.items():
+        if grid_signals is not None:
+            for signal_name, signal_api in grid_signals.items():
 
                 def fn(time):
-                    return {signal_name: signal_api.at(time)}
+                    return {signal_name: signal_api.now(time)}
 
                 self.add_monitor_fn(fn)
 
     def add_monitor_fn(self, fn: Callable[[float], dict[str, Any]]):
         self.custom_monitor_fns.append(fn)
 
-    def step(self, time: datetime, p_delta: float, actor_infos: dict) -> None:
+    def step(self, time: datetime, p_delta: float, e_delta: float, state: dict) -> None:
         log_entry = dict(
             p_delta=p_delta,
-            actor_infos=actor_infos,
+            e_delta=e_delta,
         )
+        log_entry.update(state)
         for monitor_fn in self.custom_monitor_fns:
             log_entry.update(monitor_fn(time))
         self.monitor_log[time] = log_entry
+
+        if self.outpath:
+            if not self._fieldnames:
+                log_dict = _flatten_dict(log_entry)
+                self._fieldnames = list(log_dict.keys())
+                self._fieldnames.insert(0, "time")
+                log_dict["time"] = time
+                with self.outpath.open("w") as csvfile:
+                    writer = DictWriter(csvfile, fieldnames=self._fieldnames)
+                    writer.writeheader()
+                    writer.writerow(log_dict)
+            else:
+                with self.outpath.open('a', newline='') as csvfile:
+                    writer = DictWriter(csvfile, fieldnames=self._fieldnames)
+                    log_dict = _flatten_dict(log_entry)
+                    log_dict["time"] = time
+                    writer.writerow(log_dict)
 
     def to_csv(self, out_path: str):
         df = pd.DataFrame({k: _flatten_dict(v) for k, v in self.monitor_log.items()}).T
@@ -104,7 +134,7 @@ class _ControllerSim(mosaik_api_v3.Simulator):
                 "public": True,
                 "any_inputs": True,
                 "params": ["controller"],
-                "attrs": [],
+                "attrs": ["set_parameters"],
             },
         },
     }
@@ -115,6 +145,7 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         self.step_size = None
         self.clock = None
         self.controller = None
+        self.e = 0.0
 
     def init(self, sid, time_resolution=1.0, **sim_params):
         self.step_size = sim_params["step_size"]
@@ -128,31 +159,36 @@ class _ControllerSim(mosaik_api_v3.Simulator):
 
     def step(self, time, inputs, max_advance):
         assert self.controller is not None
+        assert self.clock is not None
+        assert self.step_size is not None
         now = self.clock.to_datetime(time)
-        self.controller.step(now, *_parse_controller_inputs(inputs[self.eid]))
+        self.controller.step(now, *self._parse_controller_inputs(inputs[self.eid]))
+        self.set_parameters = self.controller.set_parameters.copy()
+        self.controller.set_parameters = {}
         return time + self.step_size
 
     def get_data(self, outputs):
-        return {}  # TODO so far unused
+        return {self.eid: {"set_parameters": self.set_parameters}}
 
     def finalize(self) -> None:
         """Stops the api server and the collector thread when the simulation finishes."""
         assert self.controller is not None
         self.controller.finalize()
 
-
-def _parse_controller_inputs(inputs: dict[str, dict[str, Any]]) -> tuple[float, dict]:
-    try:
+    def _parse_controller_inputs(
+        self, inputs: dict[str, dict[str, Any]]
+    ) -> tuple[float, float, dict]:
         p_delta = _get_val(inputs, "p_delta")
-    except KeyError:
-        p_delta = None  # in case there has not yet been any power reported by actors
-    actor_keys = [k for k in inputs.keys() if k.startswith("actor")]
-    actors: defaultdict[str, Any] = defaultdict(dict)
-    for k in actor_keys:
-        _, actor_name = k.split(".")
-        actors[actor_name] = _get_val(inputs, k)
-    assert p_delta is not None
-    return p_delta, dict(actors)
+        last_e = self.e
+        self.e = _get_val(inputs, "e")
+        actor_keys = [k for k in inputs.keys() if k.startswith("actor")]
+        actors: defaultdict[str, Any] = defaultdict(dict)
+        for k in actor_keys:
+            _, actor_name = k.split(".")
+            actors[actor_name] = _get_val(inputs, k)
+        state = dict(actors)
+        state.update(_get_val(inputs, "state"))
+        return p_delta, self.e - last_e, state
 
 
 def _get_val(inputs: dict, key: str) -> Any:
