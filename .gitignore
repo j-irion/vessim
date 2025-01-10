@@ -80,3 +80,5 @@ _build
 # Hydra
 examples/outputs
 multirun
+
+examples/merged_data.csv
