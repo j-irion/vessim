@@ -13,7 +13,9 @@ import logging
 log = logging.getLogger(__name__)
 
 
-@hydra.main(config_path="data", config_name="config_renewable_investment_analysis", version_base=None)
+@hydra.main(
+    config_path="data", config_name="config_renewable_investment_analysis", version_base=None
+)
 def main(cfg):
     all_turbines = pd.read_csv(cfg.file_paths.wind_turbines, on_bad_lines="warn")
     turbine_data = all_turbines[all_turbines["Name"] == cfg.wind_turbine_model]
@@ -131,35 +133,38 @@ def main(cfg):
 
     operational_carbon = merged_data["carbon_emissions"].sum()
 
-
     # calculate renewable coverage
 
     # Calculate the total power production from wind and solar
-    merged_data['total_renewable_power'] = merged_data['Wind.p'] + merged_data['Solar.p']
+    merged_data["total_renewable_power"] = merged_data["Wind.p"] + merged_data["Solar.p"]
 
     # Calculate the total power consumption of the computing system
     column_name = next(
-        col for col in merged_data.columns if 'ComputingSystem-' in col and col.endswith('.p')
+        col for col in merged_data.columns if "ComputingSystem-" in col and col.endswith(".p")
     )
-    merged_data['total_consumption'] = merged_data[column_name]
+    merged_data["total_consumption"] = merged_data[column_name]
 
     # Calculate renewable coverage as the percentage of renewable power over total consumption
     # Renewable Coverage (%) = (Total Renewable Power / Total Consumption) * 100
-    merged_data['renewable_coverage_percent'] = (merged_data['total_renewable_power'] / merged_data['total_consumption'].abs()) * 100
+    merged_data["renewable_coverage_percent"] = (
+        merged_data["total_renewable_power"] / merged_data["total_consumption"].abs()
+    ) * 100
 
     # Replace any infinite values with 0 (which can occur if there are periods of zero consumption)
-    merged_data.replace({'renewable_coverage_percent': {float('inf'): 0, -float('inf'): 0}}, inplace=True)
+    merged_data.replace(
+        {"renewable_coverage_percent": {float("inf"): 0, -float("inf"): 0}}, inplace=True
+    )
 
     # Summarize the renewable coverage
-    renewable_coverage_summary = merged_data['renewable_coverage_percent'].describe()
+    renewable_coverage_summary = merged_data["renewable_coverage_percent"].describe()
 
     # Calculate the percentage of time (24/7 coverage) where renewable coverage is 100% or more
-    coverage_100_percent_or_more = merged_data[merged_data['renewable_coverage_percent'] >= 100].shape[0]
+    coverage_100_percent_or_more = merged_data[
+        merged_data["renewable_coverage_percent"] >= 100
+    ].shape[0]
     total_time_periods = merged_data.shape[0]
 
     coverage_247_percentage = (coverage_100_percent_or_more / total_time_periods) * 100
-
-
 
     merged_data.to_csv(
         hydra.core.hydra_config.HydraConfig.get().runtime.output_dir + "/merged_data.csv"
