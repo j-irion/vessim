@@ -78,7 +78,8 @@ crash.log
 _build
 
 # Hydra
-examples/outputs
+outputs
 multirun
 
-examples/merged_data.csv
+# Analysis output
+merged_data.csv
