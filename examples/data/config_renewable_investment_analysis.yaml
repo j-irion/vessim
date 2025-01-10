@@ -1,5 +1,5 @@
-wind_system_capacity: 70000
-solar_system_capacity: 70000
+wind_system_capacity: 21000
+solar_system_capacity: 20000
 wind_turbine_model: GE 1.5sle
 
 file_paths:

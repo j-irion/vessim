@@ -17,7 +17,7 @@ from vessim._util import DatetimeLike
 import PySAM.Windpower
 import PySAM.Pvwattsv8
 import json
-
+from datetime import datetime
 
 class Signal(ABC):
     """Abstract base class for signals."""
@@ -443,7 +443,7 @@ class SAMSignal(Signal):
 
         self.model.execute()
 
-    def at(self, dt: DatetimeLike, **kwargs) -> float:
+    def now(self, at: DatetimeLike, **kwargs) -> float:
         """Retrieves actual data point at given time.
 
         Args:
@@ -458,13 +458,13 @@ class SAMSignal(Signal):
             raise ValueError(f"Invalid arguments: {kwargs.keys()}")
 
         try:
-            idx = self._time_to_index(dt)
+            idx = self._time_to_index(at)
             power = float(self.model.Outputs.gen[idx]) * 1000
             return power
         except KeyError:
-            last_valid_idx = self.data.index.asof(dt)
+            last_valid_idx = self.data.index.asof(at)
             if pd.isna(last_valid_idx):
-                raise ValueError(f"Cannot retrieve power at {dt}.")
+                raise ValueError(f"Cannot retrieve power at {at}.")
             last_valid_idx = self.data.index.get_loc(last_valid_idx)
             power = float(self.model.Outputs.gen[last_valid_idx]) * 1000
             return power
@@ -520,10 +520,10 @@ class CollectorSignal(Signal, ABC):
         self._thread.join()
 
 
-class FilePowerMeter(PowerMeter):
+class FileSignal(Signal):
     def __init__(self, file_path: str, unit: Optional[str] = "W", date_format: Optional[str] = None, name: Optional[str] = None):
         if name is None:
-            name = f"FilePowerMeter-{next(self._ids)}"
+            name = f"FileSignal-{next(self._ids)}"
         super().__init__(name)
         self.data = self._load_data(file_path, date_format)
         self.unit = unit
@@ -575,7 +575,7 @@ class FilePowerMeter(PowerMeter):
         else:
             raise ValueError(f"Unknown unit: {unit}")
 
-    def measure(self, now: datetime) -> float:
+    def now(self, at: datetime) -> float:
         """Measure the power at the given time.
 
         Args:
@@ -587,9 +587,9 @@ class FilePowerMeter(PowerMeter):
         Raises:
             ValueError: If no data is available before all available data points.
         """
-        last_valid_time = self.data.index.asof(now)
+        last_valid_time = self.data.index.asof(at)
         if pd.isna(last_valid_time):
-            raise ValueError(f"No data available before or at {now}")
+            raise ValueError(f"No data available before or at {at}")
         return self._convert_power_to_watts(float(self.data.at[last_valid_time, 'power']), self.unit)
 
 

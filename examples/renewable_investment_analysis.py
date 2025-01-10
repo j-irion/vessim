@@ -1,8 +1,8 @@
-from vessim.actor import ComputingSystem, Generator
+from vessim import Actor
+from vessim.actor import ComputingSystem
 from vessim.controller import Monitor
 from vessim.cosim import Environment
-from vessim.power_meter import FilePowerMeter
-from vessim.signal import SAMSignal
+from vessim.signal import SAMSignal, FileSignal
 from vessim.storage import SimpleBattery
 import hydra
 import math
@@ -56,16 +56,17 @@ def main(cfg):
     environment.add_microgrid(
         actors=[
             ComputingSystem(
-                power_meters=[
-                    FilePowerMeter(
+                nodes=[
+                    FileSignal(
                         file_path=cfg.file_paths.power_data,
                         unit="MW",
                         date_format="%a %d %b %Y %H:%M:%S GMT",
+                        name="Perlmutter",
                     )
                 ],
                 pue=1.07,
             ),
-            Generator(
+            Actor(
                 signal=SAMSignal(
                     model="Windpower",
                     weather_file=cfg.file_paths.wind_data,
@@ -73,7 +74,7 @@ def main(cfg):
                 ),
                 name="Wind",
             ),
-            Generator(
+            Actor(
                 signal=SAMSignal(
                     model="Pvwattsv8",
                     weather_file=cfg.file_paths.solar_data,
@@ -96,12 +97,12 @@ def main(cfg):
     std_abs_p_delta = abs_p_delta.std()
 
     # Calculate the embodied carbon of the wind power
-    sum_wind_power_watts = df["actor_infos.Wind.p"].sum()
+    sum_wind_power_watts = df["Wind.p"].sum()
     total_wind_power_kWh = (sum_wind_power_watts / 1000) * (1 / 60)
     embodied_carbon_wind_grams_co2 = 12 * total_wind_power_kWh
 
     # Calculate the embodied carbon of the solar power
-    sum_solar_power_watts = df["actor_infos.Solar.p"].sum()
+    sum_solar_power_watts = df["Solar.p"].sum()
     total_solar_power_kWh = (sum_solar_power_watts / 1000) * (1 / 60)
     embodied_carbon_solar_grams_co2 = 70 * total_solar_power_kWh
 
@@ -114,7 +115,7 @@ def main(cfg):
 
     carbon_data.index = carbon_data.index.tz_localize(None)
 
-    carbon_data_resampled = carbon_data.resample("60S").ffill()
+    carbon_data_resampled = carbon_data.resample("60s").ffill()
     carbon_data_filtered = carbon_data_resampled.loc[df.index.min() : df.index.max()]
 
     merged_data = df.merge(carbon_data_filtered, left_index=True, right_index=True, how="left")
@@ -134,11 +135,11 @@ def main(cfg):
     # calculate renewable coverage
 
     # Calculate the total power production from wind and solar
-    merged_data['total_renewable_power'] = merged_data['actor_infos.Wind.p'] + merged_data['actor_infos.Solar.p']
+    merged_data['total_renewable_power'] = merged_data['Wind.p'] + merged_data['Solar.p']
 
     # Calculate the total power consumption of the computing system
     column_name = next(
-        col for col in merged_data.columns if 'actor_infos.ComputingSystem-' in col and col.endswith('.p')
+        col for col in merged_data.columns if 'ComputingSystem-' in col and col.endswith('.p')
     )
     merged_data['total_consumption'] = merged_data[column_name]
 
@@ -147,7 +148,7 @@ def main(cfg):
     merged_data['renewable_coverage_percent'] = (merged_data['total_renewable_power'] / merged_data['total_consumption'].abs()) * 100
 
     # Replace any infinite values with 0 (which can occur if there are periods of zero consumption)
-    merged_data['renewable_coverage_percent'].replace([float('inf'), -float('inf')], 0, inplace=True)
+    merged_data.replace({'renewable_coverage_percent': {float('inf'): 0, -float('inf'): 0}}, inplace=True)
 
     # Summarize the renewable coverage
     renewable_coverage_summary = merged_data['renewable_coverage_percent'].describe()
@@ -163,7 +164,7 @@ def main(cfg):
     merged_data.to_csv(
         hydra.core.hydra_config.HydraConfig.get().runtime.output_dir + "/merged_data.csv"
     )
-    log.info(f"24/7 coverage:", coverage_247_percentage)
+    log.info(f"24/7 coverage: {coverage_247_percentage}")
     return coverage_247_percentage
 
 
