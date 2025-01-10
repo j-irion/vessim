@@ -114,7 +114,15 @@ def main(cfg):
     total_solar_power_kWh = (sum_solar_power_watts / 1000) * (1 / 60)
     embodied_carbon_solar_grams_co2 = 70 * total_solar_power_kWh
 
-    embodied_carbon = embodied_carbon_wind_grams_co2 + embodied_carbon_solar_grams_co2
+    # Calculate the embodied carbon of the battery
+    battery_capacity_kWh = num_of_cells * 19.14 / 1000
+    embodied_carbon_battery_grams_co2 = battery_capacity_kWh * 74000
+
+    embodied_carbon = (
+        embodied_carbon_wind_grams_co2
+        + embodied_carbon_solar_grams_co2
+        + embodied_carbon_battery_grams_co2
+    )
 
     # embodied_carbon = embodied_carbon_solar_grams_co2
 
@@ -182,6 +190,8 @@ def main(cfg):
     )
     log.info(f"24/7 coverage: {coverage_247_percentage}")
     log.info(f"Netzero percentage: {netzero_percentage}")
+    log.info(f"Operational carbon: {operational_carbon}")
+    log.info(f"Embodied carbon: {embodied_carbon}")
     return coverage_247_percentage
 
 
