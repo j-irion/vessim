@@ -13,7 +13,7 @@ solar_system_capacity: 1500
 wind_turbine_model: GE 1.5sle
 
 file_paths:
-  power_data: ${hydra:runtime.cwd}/data/power_data.csv
+  power_data: ${hydra:runtime.cwd}/data/power_data_ce.csv
   wind_data: ${hydra:runtime.cwd}/data/wind_data_berkeley.csv
   solar_data: ${hydra:runtime.cwd}/data/solar_data_berkeley.csv
   solar_config: ${hydra:runtime.cwd}/data/pvwatts_config.json
