@@ -52,7 +52,7 @@ def main(cfg):
 
     solar_config["system_capacity"] = cfg.solar_system_capacity
 
-    num_of_cells = int((cfg.battery_capacity * 1000) / 19.14)
+    num_of_cells = int((cfg.battery_capacity * 1000) / cfg.single_cell_capacity)
 
     environment = Environment(sim_start="2020-05-01 00:00:00")
 
@@ -91,6 +91,16 @@ def main(cfg):
         storage=ClcBattery(
             number_of_cells=num_of_cells,
             initial_soc=1.0,
+            nom_voltage=3.63,
+            min_soc=0.0,
+            v_1=0.0,
+            v_2=cfg.single_cell_capacity,
+            u_1=-(0.01 * cfg.single_cell_capacity),
+            u_2=-(0.04 * cfg.single_cell_capacity),
+            eta_c=0.97,
+            eta_d=1.04,
+            alpha_c=3.0,
+            alpha_d=-3.0,
         ),
         step_size=60,  # global step size (can be overridden by actors or controllers)
     )

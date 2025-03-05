@@ -13,7 +13,8 @@ hydra:
 wind_system_capacity: 1500
 solar_system_capacity: 1500
 wind_turbine_model: GE 1.5sle
-battery_capacity: 1000
+battery_capacity: 20000
+single_cell_capacity: 11.84
 
 file_paths:
   power_data: ${hydra:runtime.cwd}/data/power_data_ce.csv
