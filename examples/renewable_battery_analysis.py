@@ -122,10 +122,10 @@ def main(cfg):
     # Calculate the embodied carbon of the solar power
     sum_solar_power_watts = df["Solar.p"].sum()
     total_solar_power_kWh = (sum_solar_power_watts / 1000) * (1 / 60)
-    embodied_carbon_solar_grams_co2 = 70 * total_solar_power_kWh
+    embodied_carbon_solar_grams_co2 = 55 * total_solar_power_kWh
 
     # Calculate the embodied carbon of the battery
-    battery_capacity_kWh = num_of_cells * 19.14 / 1000
+    battery_capacity_kWh = num_of_cells * cfg.single_cell_capacity / 1000
     embodied_carbon_battery_grams_co2 = battery_capacity_kWh * 74000
 
     embodied_carbon = (
