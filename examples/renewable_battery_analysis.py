@@ -54,7 +54,7 @@ def main(cfg):
 
     num_of_cells = int((cfg.battery_capacity * 1000) / cfg.single_cell_capacity)
 
-    environment = Environment(sim_start="2020-05-01 00:00:00")
+    environment = Environment(sim_start="2020-01-01 00:00:00")
 
     monitor = Monitor()  # stores simulation result on each step
     environment.add_microgrid(
@@ -105,7 +105,7 @@ def main(cfg):
         step_size=60,  # global step size (can be overridden by actors or controllers)
     )
 
-    environment.run(until=24 * 3600 * 14)  # 14 Tage
+    environment.run(until=24 * 3600 * 365)  # 14 Tage
     monitor.to_csv("result.csv")
 
     # Load the CSV file and calculate statistics
