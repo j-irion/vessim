@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # init default values
-jobname="default"
-command="poetry run python renewable_battery_analysis.py"
-ntasks=16  # cores
+jobname="Exhaustive Battery Sweep"
+command="poetry run python renewable_battery_analysis.py --multirun"
+ntasks=128  # cores
 memory=32000M
-mail="irion@campus.tu-berlin.de"
+mail="irion@tu-berlin.de"
 #license="~/gurobi.lic"
 
 while getopts j:c:n:m:r: flag

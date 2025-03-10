@@ -5,7 +5,7 @@ sbatch <<EOT
 #SBATCH -o setup.out      # Output-File
 #SBATCH -D ./               # Working Directory
 #SBATCH -J setup          # Job Name
-#SBATCH --ntasks=16          # Number of requested CPU-Cores
+#SBATCH --ntasks=128          # Number of requested CPU-Cores
 #SBATCH --mem=8000M         # resident memory per node
 
 ##Provide Max Walltime :
@@ -16,7 +16,7 @@ sbatch <<EOT
 
 #Job-Status per Mail (see doc):
 #SBATCH --mail-type=ALL
-#SBATCH --mail-user=irion@campus.tu-berlin.de
+#SBATCH --mail-user=irion@tu-berlin.de
 
 module load python/3.9.19
 
