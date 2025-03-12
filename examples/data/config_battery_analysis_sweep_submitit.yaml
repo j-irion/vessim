@@ -5,7 +5,7 @@ defaults:
 hydra:
   sweeper:
     params:
-      wind_system_capacity: range(1500, 4500, step=1500) # possible configurations: 15 30 45 60 75 90 105 120 135 150 165 180 195 210 = 14
+      # wind_system_capacity: range(1500, 4500, step=1500) # possible configurations: 15 30 45 60 75 90 105 120 135 150 165 180 195 210 = 14
       # wind_system_capacity: range(4500, 7500, step=1500)
       # wind_system_capacity: range(7500, 10500, step=1500)
       # wind_system_capacity: range(10500, 13500, step=1500)
