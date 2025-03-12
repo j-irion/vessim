@@ -1,0 +1,26 @@
+defaults:
+  - override hydra/launcher: submitit_slurm
+
+hydra:
+  sweeper:
+    params:
+      wind_system_capacity: range(1500, 6000, step=1500) # possible configurations: 15 30 45 60 75 90 105 120 135 150 165 180 195 210 = 14
+      #solar_system_capacity: range(1000, 20000, step=1000) # possible configurations: 20
+      #battery_capacity: range(1000, 20000, step=1000) # possible configurations: 20
+      #wind_turbine_model: choice('GE 1.5sle', 'Vensys 82m 1500kW') # possible configurations: 2
+
+
+wind_system_capacity: 1500
+solar_system_capacity: 1500
+wind_turbine_model: GE 1.5sle
+battery_capacity: 20000
+single_cell_capacity: 11.84
+
+file_paths:
+  power_data: ${hydra:runtime.cwd}/data/power_data_ce.csv
+  wind_data: ${hydra:runtime.cwd}/data/wind_data_berkeley.csv
+  solar_data: ${hydra:runtime.cwd}/data/solar_data_berkeley.csv
+  solar_config: ${hydra:runtime.cwd}/data/pvwatts_config.json
+  wind_config: ${hydra:runtime.cwd}/data/windpower_config.json
+  wind_turbines: ${hydra:runtime.cwd}/data/Wind_Turbines.csv
+  carbon_data: ${hydra:runtime.cwd}/data/carbon_data.csv
