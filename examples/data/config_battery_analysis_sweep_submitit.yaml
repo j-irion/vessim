@@ -30,4 +30,4 @@ file_paths:
   solar_config: ${hydra:runtime.cwd}/data/pvwatts_config.json
   wind_config: ${hydra:runtime.cwd}/data/windpower_config.json
   wind_turbines: ${hydra:runtime.cwd}/data/Wind_Turbines.csv
-  carbon_data: ${hydra:runtime.cwd}/data/carbon_data.csv
+  carbon_data: ${hydra:runtime.cwd}/data/US-CAL-CISO_2024_hourly.csv

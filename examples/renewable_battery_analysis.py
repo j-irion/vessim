@@ -105,7 +105,7 @@ def main(cfg):
         step_size=60,  # global step size (can be overridden by actors or controllers)
     )
 
-    environment.run(until=24 * 3600 * 365)  # 14 Tage
+    environment.run(until=24 * 3600 * 365)  # in days
     monitor.to_csv("result.csv")
 
     # Load the CSV file and calculate statistics
@@ -137,15 +137,28 @@ def main(cfg):
     # embodied_carbon = embodied_carbon_solar_grams_co2
 
     # Calculate the operational carbon
-    carbon_data = pd.read_csv(cfg.file_paths.carbon_data, index_col=0, parse_dates=True)
+    carbon_data = pd.read_csv(cfg.file_paths.carbon_data, parse_dates=["Datetime (UTC)"])
 
+    # Convert to datetime and set as index
+    carbon_data["Datetime (UTC)"] = pd.to_datetime(carbon_data["Datetime (UTC)"])
+    carbon_data.set_index("Datetime (UTC)", inplace=True)
+
+    # Remove timezone if present and filter for your specific zone if needed
     carbon_data.index = carbon_data.index.tz_localize(None)
 
+    # Select the appropriate carbon intensity column and rename it
+    carbon_data = carbon_data[["Carbon Intensity gCO₂eq/kWh (LCA)"]].rename(
+        columns={"Carbon Intensity gCO₂eq/kWh (LCA)": "carbon_intensity"}
+    )
+
+    # Resample and filter to match your data
     carbon_data_resampled = carbon_data.resample("60s").ffill()
     carbon_data_filtered = carbon_data_resampled.loc[df.index.min() : df.index.max()]
 
+    # Merge with your main dataframe
     merged_data = df.merge(carbon_data_filtered, left_index=True, right_index=True, how="left")
 
+    # Calculate carbon emissions
     merged_data["carbon_emissions"] = merged_data.apply(
         lambda row: (
             (-1 * row["p_delta"] / 1000 * (1 / 60) * row["carbon_intensity"])
@@ -195,9 +208,14 @@ def main(cfg):
     # calculate percentage of time where netzero is achieved
     netzero_percentage = (merged_data["netzero"].sum() / total_time_periods) * 100
 
-    merged_data.to_csv(
-        hydra.core.hydra_config.HydraConfig.get().runtime.output_dir + "/merged_data.csv"
+    # merged_data.to_csv(
+    #     hydra.core.hydra_config.HydraConfig.get().runtime.output_dir + "/merged_data.csv"
+    # )
+
+    merged_data.to_feather(
+        hydra.core.hydra_config.HydraConfig.get().runtime.output_dir + "/merged_data.feather"
     )
+
     log.info(f"24/7 coverage: {coverage_247_percentage}")
     log.info(f"Netzero percentage: {netzero_percentage}")
     log.info(f"Operational carbon: {operational_carbon}")
