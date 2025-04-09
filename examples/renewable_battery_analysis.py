@@ -15,7 +15,9 @@ import logging
 log = logging.getLogger(__name__)
 
 
-@hydra.main(config_path="data", config_name="config_battery_analysis_sweep", version_base=None)
+@hydra.main(
+    config_path="data", config_name="config_battery_analysis_sweep_submitit", version_base=None
+)
 def main(cfg):
     all_turbines = pd.read_csv(cfg.file_paths.wind_turbines, on_bad_lines="warn")
     turbine_data = all_turbines[all_turbines["Name"] == cfg.wind_turbine_model]
