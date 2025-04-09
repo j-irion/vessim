@@ -214,8 +214,8 @@ def main(cfg):
     #     hydra.core.hydra_config.HydraConfig.get().runtime.output_dir + "/merged_data.csv"
     # )
 
-    merged_data.to_feather(
-        hydra.core.hydra_config.HydraConfig.get().runtime.output_dir + "/merged_data.feather"
+    merged_data.to_csv(
+        hydra.core.hydra_config.HydraConfig.get().runtime.output_dir + "/merged_data.csv"
     )
 
     log.info(f"24/7 coverage: {coverage_247_percentage}")
