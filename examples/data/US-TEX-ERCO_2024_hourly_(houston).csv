@@ -1,4 +1,4 @@
-Datetime (UTC),Country,Zone name,Zone id,Carbon intensity gCO₂eq/kWh (direct),Carbon intensity gCO₂eq/kWh (LCA),Carbon-free energy percentage (CFE%),Renewable energy percentage (RE%),Data source,Data estimated,Data estimation method
+Datetime (UTC),Country,Zone name,Zone id,Carbon intensity gCO₂eq/kWh (direct),Carbon Intensity gCO₂eq/kWh (LCA),Carbon-free energy percentage (CFE%),Renewable energy percentage (RE%),Data source,Data estimated,Data estimation method
 2020-01-01 00:00:00,USA,Electric Reliability Council of Texas,US-TEX-ERCO,342.96,401.96,42.44,31.32,ercot.com,false,
 2020-01-01 01:00:00,USA,Electric Reliability Council of Texas,US-TEX-ERCO,289.73,344.0,49.72,38.36,ercot.com,false,
 2020-01-01 02:00:00,USA,Electric Reliability Council of Texas,US-TEX-ERCO,270.59,321.67,53.24,41.66,ercot.com,false,
