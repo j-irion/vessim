@@ -26,9 +26,9 @@ single_cell_capacity: 11.84
 
 file_paths:
   power_data: ${hydra:runtime.cwd}/data/power_data_ce.csv
-  wind_data: ${hydra:runtime.cwd}/data/wind_data_houston.csv
-  solar_data: ${hydra:runtime.cwd}/data/29.76_-95.37_psm3-5min_5_2020.csv
+  wind_data: ${hydra:runtime.cwd}/data/WIND-Toolkit_lat46.81_lon-100.78_2014_5min_bismarck.csv
+  solar_data: ${hydra:runtime.cwd}/data/bismarck_nd_psm3-5min_5_2020.csv
   solar_config: ${hydra:runtime.cwd}/data/pvwatts_config.json
   wind_config: ${hydra:runtime.cwd}/data/windpower_config.json
   wind_turbines: ${hydra:runtime.cwd}/data/Wind_Turbines.csv
-  carbon_data: ${hydra:runtime.cwd}/data/US-TEX-ERCO_2024_hourly_(houston).csv
+  carbon_data: ${hydra:runtime.cwd}/data/US-MIDW-MISO_2021_hourly_(bismarck).csv
