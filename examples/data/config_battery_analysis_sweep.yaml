@@ -4,9 +4,9 @@ defaults:
 hydra:
   sweeper:
     params:
-      wind_system_capacity: range(1500, 22500, step=1500) # possible configurations: 15 30 45 60 75 90 105 120 135 150 165 180 195 210 = 14
-      solar_system_capacity: range(1000, 21000, step=1000) # possible configurations: 20
-      battery_capacity: range(1000, 21000, step=1000) # possible configurations: 20
+      wind_system_capacity: range(1500, 22500, step=3000) # possible configurations: 15 30 45 60 75 90 105 120 135 150 165 180 195 210 = 14
+      solar_system_capacity: range(1000, 21000, step=2000) # possible configurations: 20
+      battery_capacity: range(1000, 21000, step=2000) # possible configurations: 20
       #wind_turbine_model: choice('GE 1.5sle', 'Vensys 82m 1500kW') # possible configurations: 2
 
 
