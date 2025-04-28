@@ -160,15 +160,18 @@ def main(cfg):
     # Merge with your main dataframe
     merged_data = df.merge(carbon_data_filtered, left_index=True, right_index=True, how="left")
 
+    neg = (-merged_data["p_delta"].clip(upper=0) / 1000) * (1 / 60)
+    merged_data["carbon_emissions"] = neg * merged_data["carbon_intensity"]
+
     # Calculate carbon emissions
-    merged_data["carbon_emissions"] = merged_data.apply(
-        lambda row: (
-            (-1 * row["p_delta"] / 1000 * (1 / 60) * row["carbon_intensity"])
-            if row["p_delta"] < 0
-            else 0
-        ),
-        axis=1,
-    )
+    # merged_data["carbon_emissions"] = merged_data.apply(
+    #    lambda row: (
+    #        (-1 * row["p_delta"] / 1000 * (1 / 60) * row["carbon_intensity"])
+    #        if row["p_delta"] < 0
+    #        else 0
+    #    ),
+    #    axis=1,
+    # )
 
     operational_carbon = merged_data["carbon_emissions"].sum()
 
