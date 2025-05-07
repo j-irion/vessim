@@ -151,7 +151,7 @@ def main(cfg):
             step_size=60,  # global step size (can be overridden by actors or controllers)
         )
 
-    environment.run(until=24 * 3600 * 1)  # in days
+    environment.run(until=24 * 3600 * 365)  # in days
     monitor.to_csv("result.csv")
 
     # Load the CSV file and calculate statistics
