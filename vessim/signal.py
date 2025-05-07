@@ -457,6 +457,9 @@ class SAMSignal(Signal):
         if kwargs:
             raise ValueError(f"Invalid arguments: {kwargs.keys()}")
 
+        if self.model.value("system_capacity") == 0:
+            return 0
+
         try:
             idx = self._time_to_index(at)
             power = float(self.model.Outputs.gen[idx]) * 1000
