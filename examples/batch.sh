@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# Initial wind system capacity
 battery_capacity=0
 
 # Run the command 14 times
@@ -8,7 +7,7 @@ for i in {1..7}
 do
     echo "-----------------------------------------"
     echo "Iteration: $i / 7"
-    echo "Target wind system capacity: $wind_system_capacity"
+    echo "Target battery capacity: $battery_capacity"
     echo "Checking for running SLURM jobs..."
 
     # Wait until there are no SLURM jobs for the user
@@ -27,13 +26,12 @@ do
         sleep 30
     done
 
-    echo "Executing Python script with wind_system_capacity=$battery_capacity..."
+    echo "Executing Python script with battery_capacity=$battery_capacity..."
 
     # Run the Python script
     stdbuf -oL -eL python renewable_battery_analysis.py --multirun --config-name config_battery_analysis_sweep_submitit battery_capacity=$battery_capacity | tee -a output.log
 
-    # Increase wind system capacity by 1500
-    battery_capacity=$((wind_system_capacity + 7500))
+    battery_capacity=$((battery_capacity + 7500))
 
     echo "Iteration $i completed. Sleeping for 30 seconds before next run..."
 
