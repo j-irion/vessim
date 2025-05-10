@@ -59,53 +59,88 @@ def main(cfg):
     environment = Environment(sim_start="2020-01-01 00:00:00")
 
     monitor = Monitor()  # stores simulation result on each step
-    environment.add_microgrid(
-        actors=[
-            ComputingSystem(
-                nodes=[
-                    FileSignal(
-                        file_path=cfg.file_paths.power_data,
-                        unit="MW",
-                        date_format="%a %d %b %Y %H:%M:%S GMT",
-                        name="Perlmutter",
-                    )
-                ],
-                pue=1.07,
-            ),
-            Actor(
-                signal=SAMSignal(
-                    model="Windpower",
-                    weather_file=cfg.file_paths.wind_data,
-                    config_object=wind_config,
+    if cfg.battery_capacity > 0:
+        environment.add_microgrid(
+            actors=[
+                ComputingSystem(
+                    nodes=[
+                        FileSignal(
+                            file_path=cfg.file_paths.power_data,
+                            unit="MW",
+                            date_format="%a %d %b %Y %H:%M:%S GMT",
+                            name="Perlmutter",
+                        )
+                    ],
+                    pue=1.07,
                 ),
-                name="Wind",
-            ),
-            Actor(
-                signal=SAMSignal(
-                    model="Pvwattsv8",
-                    weather_file=cfg.file_paths.solar_data,
-                    config_object=solar_config,
+                Actor(
+                    signal=SAMSignal(
+                        model="Windpower",
+                        weather_file=cfg.file_paths.wind_data,
+                        config_object=wind_config,
+                    ),
+                    name="Wind",
                 ),
-                name="Solar",
+                Actor(
+                    signal=SAMSignal(
+                        model="Pvwattsv8",
+                        weather_file=cfg.file_paths.solar_data,
+                        config_object=solar_config,
+                    ),
+                    name="Solar",
+                ),
+            ],
+            controllers=[monitor],
+            storage=ClcBattery(
+                number_of_cells=num_of_cells,
+                initial_soc=1.0,
+                nom_voltage=3.63,
+                min_soc=0.0,
+                v_1=0.0,
+                v_2=cfg.single_cell_capacity,
+                u_1=-(0.01 / 3.63),
+                u_2=-(0.04 / 3.63),
+                eta_c=0.97,
+                eta_d=1.04,
+                alpha_c=3.0,
+                alpha_d=-3.0,
             ),
-        ],
-        controllers=[monitor],
-        storage=ClcBattery(
-            number_of_cells=num_of_cells,
-            initial_soc=1.0,
-            nom_voltage=3.63,
-            min_soc=0.0,
-            v_1=0.0,
-            v_2=cfg.single_cell_capacity,
-            u_1=-(0.01 / 3.63),
-            u_2=-(0.04 / 3.63),
-            eta_c=0.97,
-            eta_d=1.04,
-            alpha_c=3.0,
-            alpha_d=-3.0,
-        ),
-        step_size=60,  # global step size (can be overridden by actors or controllers)
-    )
+            step_size=60,  # global step size (can be overridden by actors or controllers)
+        )
+    else:
+        environment.add_microgrid(
+            actors=[
+                ComputingSystem(
+                    nodes=[
+                        FileSignal(
+                            file_path=cfg.file_paths.power_data,
+                            unit="MW",
+                            date_format="%a %d %b %Y %H:%M:%S GMT",
+                            name="Perlmutter",
+                        )
+                    ],
+                    pue=1.07,
+                ),
+                Actor(
+                    signal=SAMSignal(
+                        model="Windpower",
+                        weather_file=cfg.file_paths.wind_data,
+                        config_object=wind_config,
+                    ),
+                    name="Wind",
+                ),
+                Actor(
+                    signal=SAMSignal(
+                        model="Pvwattsv8",
+                        weather_file=cfg.file_paths.solar_data,
+                        config_object=solar_config,
+                    ),
+                    name="Solar",
+                ),
+            ],
+            controllers=[monitor],
+            step_size=60,  # global step size (can be overridden by actors or controllers)
+        )
 
     environment.run(until=24 * 3600 * 365)  # in days
     monitor.to_csv("result.csv")
