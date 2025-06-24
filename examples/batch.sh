@@ -3,10 +3,10 @@
 battery_capacity=0
 
 # Run the command 14 times
-for i in {1..7}
+for i in {1..9}
 do
     echo "-----------------------------------------"
-    echo "Iteration: $i / 7"
+    echo "Iteration: $i / 9"
     echo "Target battery capacity: $battery_capacity"
     echo "Checking for running SLURM jobs..."
 
