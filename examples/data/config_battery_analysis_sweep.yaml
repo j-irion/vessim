@@ -6,14 +6,14 @@ hydra:
     params:
       wind_system_capacity: range(0, 33000, step=3000)
       solar_system_capacity: range(0, 44000, step=4000) # possible configurations: 20
-      battery_capacity: range(0, 52500, step=7500) # possible configurations: 20
+      battery_capacity: range(0, 67500, step=7500) # possible configurations: 20
       #wind_turbine_model: choice('GE 1.5sle', 'Vensys 82m 1500kW') # possible configurations: 2
 
 
-wind_system_capacity: 1500
-solar_system_capacity: 1500
+wind_system_capacity: 0
+solar_system_capacity: 0
 wind_turbine_model: GE 1.5sle
-battery_capacity: 20000
+battery_capacity: 0
 single_cell_capacity: 11.84
 
 file_paths:
