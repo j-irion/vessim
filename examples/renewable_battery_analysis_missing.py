@@ -64,7 +64,7 @@ def main(cfg):
     solar_config["system_capacity"] = solar_system_capacity
 
     num_of_cells = int((battery_capacity * 1000) / cfg.single_cell_capacity)
-    initial_soc = 7500 / cfg.battery_capacity if cfg.battery_capacity > 0 else 0
+    initial_soc = 7500 / battery_capacity if battery_capacity > 0 else 0
 
     environment = Environment(sim_start="2020-01-01 00:00:00")
 
