@@ -29,7 +29,7 @@ do
     echo "Executing Python script with battery_capacity=$battery_capacity..."
 
     # Run the Python script
-    stdbuf -oL -eL python renewable_battery_analysis.py --multirun --config-name config_battery_analysis_sweep_submitit battery_capacity=$battery_capacity | tee -a output.log
+    stdbuf -oL -eL python renewable_battery_analysis.py --multirun --config-name config_battery_analysis_sweep_submitit_berkley battery_capacity=$battery_capacity | tee -a output.log
 
     battery_capacity=$((battery_capacity + 7500))
 
