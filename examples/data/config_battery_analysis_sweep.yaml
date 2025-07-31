@@ -10,11 +10,11 @@ hydra:
       #wind_turbine_model: choice('GE 1.5sle', 'Vensys 82m 1500kW') # possible configurations: 2
 
 
-wind_system_capacity: 0
-solar_system_capacity: 0
+wind_system_capacity: 30000
+solar_system_capacity: 30000
 wind_turbine_model: GE 1.5sle
-battery_capacity: 0
-single_cell_capacity: 11.84
+battery_capacity: 60000
+single_cell_capacity: 19.14
 
 file_paths:
   power_data: ${hydra:runtime.cwd}/data/power_data_ce.csv

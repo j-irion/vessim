@@ -99,12 +99,12 @@ def main(cfg):
                 min_soc=0.0,
                 v_1=0.0,
                 v_2=cfg.single_cell_capacity,
-                u_1=-(0.01 / 3.63),
-                u_2=-(0.04 / 3.63),
-                eta_c=0.97,
-                eta_d=1.04,
-                alpha_c=3.0,
-                alpha_d=-3.0,
+                u_1=-0.087,
+                u_2=-1.326,
+                eta_c=0.95,
+                eta_d=1.05,
+                alpha_c=0.5,
+                alpha_d=-0.5,
             ),
             step_size=60,  # global step size (can be overridden by actors or controllers)
         )
@@ -143,7 +143,7 @@ def main(cfg):
             step_size=60,  # global step size (can be overridden by actors or controllers)
         )
 
-    environment.run(until=24 * 3600 * 365)  # in days
+    environment.run(until=24 * 3600 * 2)  # in days
     monitor.to_csv("result.csv")
 
     # Load the CSV file and calculate statistics
