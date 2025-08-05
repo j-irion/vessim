@@ -863,27 +863,31 @@ class SAMSignal(Signal):
         return idx
 
 class FileSignal(Signal):
-    def __init__(self, file_path: str, unit: Optional[str] = "W", date_format: Optional[str] = None, name: Optional[str] = None):
+    def __init__(
+        self,
+        file_path: str,
+        unit: Optional[str] = "W",
+        date_format: Optional[str] = None,
+        name: Optional[str] = None,
+        invert: bool = False,
+    ):
+        """
+        Args:
+            file_path: Path to the CSV file.
+            unit: Unit of the power values in the CSV (e.g., "W", "kW", "MW").
+            date_format: Optional strptime format for timestamps.
+            name: Optional name for the signal.
+            invert: If True, inverts the sign of the power values (positive->negative and vice versa).
+        """
         if name is None:
             name = f"FileSignal-{next(self._ids)}"
         self.name = name
         self.data = self._load_data(file_path, date_format)
         self.unit = unit
+        self.invert = invert
 
     @staticmethod
     def _load_data(file_path: str, date_format: Optional[str]) -> pd.DataFrame:
-        """Load data from a CSV file.
-
-        Args:
-            file_path: Path to the CSV file.
-            date_format: The format of the date in the CSV file.
-
-        Returns:
-            The loaded data as a pandas DataFrame.
-
-        Raises:
-            ValueError: If the time index is not monotonic increasing or decreasing, or not unique.
-        """
         data = pd.read_csv(file_path, names=['time', 'power'], skiprows=1)
         if date_format:
             data['time'] = pd.to_datetime(data['time'], format=date_format)
@@ -891,7 +895,7 @@ class FileSignal(Signal):
             data['time'] = pd.to_datetime(data['time'])
         data.set_index('time', inplace=True)
         data.sort_index(inplace=True)
-        if not data.index.is_monotonic_increasing or data.index.is_monotonic_decreasing:
+        if not (data.index.is_monotonic_increasing or data.index.is_monotonic_decreasing):
             raise ValueError("The time index must be monotonic increasing or decreasing.")
         if not data.index.is_unique:
             raise ValueError("The time index must be unique.")
@@ -899,15 +903,6 @@ class FileSignal(Signal):
 
     @staticmethod
     def _convert_power_to_watts(power: float, unit: str) -> float:
-        """Convert the power to watts.
-
-        Args:
-            power: The power to be converted.
-            unit: The unit of the power.
-
-        Returns:
-            The power in watts.
-        """
         if unit == "W":
             return power
         elif unit == "kW":
@@ -918,18 +913,10 @@ class FileSignal(Signal):
             raise ValueError(f"Unknown unit: {unit}")
 
     def now(self, at: datetime) -> float:
-        """Measure the power at the given time.
-
-        Args:
-            now: The current time.
-
-        Returns:
-            The power at the given time.
-
-        Raises:
-            ValueError: If no data is available before all available data points.
-        """
         last_valid_time = self.data.index.asof(at)
         if pd.isna(last_valid_time):
             raise ValueError(f"No data available before or at {at}")
-        return self._convert_power_to_watts(float(self.data.at[last_valid_time, 'power']), self.unit)
+
+        raw_power = float(self.data.at[last_valid_time, 'power'])
+        watts = self._convert_power_to_watts(raw_power, self.unit)
+        return -watts if self.invert else watts
