@@ -4,7 +4,7 @@ defaults:
 hydra:
   sweeper:
     params:
-      capacity_tuple: choice("0,4000,15000","0,4000,22500","0,8000,30000","0,12000,22500","0,12000,37500","0,28000,22500","3000,24000,0","3000,28000,0","12000,28000,7500")
+      capacity_tuple: choice("3000,24000,22500","9000,32000,45000","9000,36000,45000")
 capacity_tuple: "1500,1000,1000"
 #wind_system_capacity: 1500
 #solar_system_capacity: 1500

@@ -95,6 +95,7 @@ def main(cfg):
             storage=ClcBattery(
                 number_of_cells=num_of_cells,
                 initial_soc=initial_soc,
+                # initial_soc=0.1632999723664241,
                 nom_voltage=3.63,
                 min_soc=0.0,
                 v_1=0.0,
@@ -143,7 +144,7 @@ def main(cfg):
             step_size=60,  # global step size (can be overridden by actors or controllers)
         )
 
-    environment.run(until=24 * 3600 * 2)  # in days
+    environment.run(until=24 * 3600 * 365)  # in days
     monitor.to_csv("result.csv")
 
     # Load the CSV file and calculate statistics

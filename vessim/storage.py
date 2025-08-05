@@ -218,6 +218,13 @@ class ClcBattery(Storage):
         self.discharging_power_cutoff = discharging_current_cutoff * self.nom_voltage
         self.charging_power_cutoff = charging_current_cutoff * self.nom_voltage
 
+        # after you build your battery:
+        print("v2 (Wh/cell):", self.v_2)
+        print("alpha_d  (W/cell):", self.alpha_d)
+        print("cells:", self.number_of_cells)
+        print("pack cap (Wh):", self.v_2 * self.number_of_cells)
+        print("pack Pmax @0.5C (W):", abs(self.alpha_d) * self.number_of_cells)
+
     def soc(self) -> float:
         return self._soc
 
