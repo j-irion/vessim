@@ -68,6 +68,7 @@ def main(cfg):
                         unit="MW",
                         date_format="%a %d %b %Y %H:%M:%S GMT",
                         name="Perlmutter",
+                        invert=True,
                     ),
                     name="ComputingSystem",
                 ),
