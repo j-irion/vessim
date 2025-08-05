@@ -1,51 +1,31 @@
 from __future__ import annotations
 
-from datetime import datetime
-from itertools import count
-from typing import Optional
 from abc import ABC, abstractmethod
+from datetime import datetime
+from typing import Optional
 
 import mosaik_api_v3  # type: ignore
 
 from vessim.signal import Signal
 
 
-class ActorBase(ABC):
-    """Abstract base class representing a power consumer or producer."""
-
-    def __init__(self, name: str, step_size: Optional[int] = None) -> None:
-        self.name = name
-        self.step_size = step_size
-
-    @abstractmethod
-    def p(self, now: datetime) -> float:
-        """Current power consumption/production to be used in the grid simulation."""
-
-    def state(self, now: datetime) -> dict:
-        """Current state of the actor to be used in controllers."""
-        return {}
-
-    def finalize(self) -> None:
-        """Perform any finalization tasks for the consumer.
-
-        This method can be overridden by subclasses to implement necessary
-        finalization steps.
-        """
-        return
-
-
-class Actor(ActorBase):
-    """Actor that represents a consumer of producer based on a single Signal."""
+class Actor:
+    """Consumer or producer based on a Signal."""
 
     def __init__(self, name: str, signal: Signal, step_size: Optional[int] = None) -> None:
-        super().__init__(name, step_size)
+        self.name = name
+        self.step_size = step_size
         self.signal = signal
 
     def p(self, now: datetime) -> float:
+        """Current power consumption/production."""
         return self.signal.now(at=now)
 
     def state(self, now: datetime) -> dict:
+        """Current state of the actor which is passed to controllers on every step."""
         return {
+            "name": self.name,
+            "signal": str(self.signal),
             "p": self.p(now),
         }
 
@@ -53,48 +33,27 @@ class Actor(ActorBase):
         self.signal.finalize()
 
 
-class ComputingSystem(ActorBase):
-    """Model of the computing system.
+class SilActor(ABC):
+    """Marker base class for Software-in-the-Loop actors.
 
-    This model considers the power usage effectiveness (PUE) and power
-    consumption of a list of power meters.
-
-    Args:
-        power_meters: list of PowerMeters that constitute the computing system's demand.
-        pue: The power usage effectiveness of the system.
+    The Environment class uses this to sanity check that
+    SilActor are only used in real-time simulations.
     """
 
-    _ids = count(0)
+    def __init__(self, name: str, step_size: Optional[int] = None) -> None:
+        self.name = name
+        self.step_size = step_size
 
-    def __init__(
-        self,
-        nodes: list[Signal],
-        name: Optional[str] = None,
-        step_size: Optional[int] = None,
-        pue: float = 1,
-    ):
-        if name is None:
-            name = f"ComputingSystem-{next(self._ids)}"
-        super().__init__(name, step_size)
-        self.nodes = nodes
-        node_ids = count(0)
-        for node in self.nodes:
-            if not node.name:
-                node.name = f"Node-{next(node_ids)}"
-        self.pue = pue
-
+    @abstractmethod
     def p(self, now: datetime) -> float:
-        return self.pue * sum(-signal.now(at=now) for signal in self.nodes)
+        """Current power consumption/production."""
 
+    @abstractmethod
     def state(self, now: datetime) -> dict:
-        return {
-            "p": self.p(now),
-            "nodes": {signal.name: -signal.now(at=now) for signal in self.nodes},
-        }
+        """Current state of the actor which is passed to controllers on every step."""
 
     def finalize(self) -> None:
-        for node in self.nodes:
-            node.finalize()
+        """Finalize the actor, e.g., close connections."""
 
 
 class _ActorSim(mosaik_api_v3.Simulator):

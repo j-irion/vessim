@@ -6,26 +6,26 @@ from datetime import timedelta
 import vessim as vs
 
 
-class TestHistoricalSignal:
+class TestTrace:
     @pytest.fixture
-    def hist_signal(self) -> vs.HistoricalSignal:
+    def hist_signal(self) -> vs.Trace:
         index = [
             "2023-01-01T00:00:00",
             "2023-01-01T00:30:00",
             "2023-01-01T01:00:00",
         ]
         actual = pd.DataFrame({"a": [1, 2, 3], "b": [0, 3, 0], "c": [None, 4, None]}, index=index)
-        return vs.HistoricalSignal(actual)
+        return vs.Trace(actual)
 
     @pytest.fixture
-    def hist_signal_single(self) -> vs.HistoricalSignal:
+    def hist_signal_single(self) -> vs.Trace:
         index = ["2023-01-01T01:00:00", "2023-01-01T00:30:00", "2023-01-01T00:00:00"]
         actual = pd.Series([3, 2, 1], index=index)
-        return vs.HistoricalSignal(actual, fill_method="bfill")
+        return vs.Trace(actual, fill_method="bfill")
 
     @pytest.fixture
-    def hist_signal_forecast(self) -> vs.HistoricalSignal:
-        index = pd.date_range("2023-01-01T00:00:00", "2023-01-01T01:00:00", freq="20T")
+    def hist_signal_forecast(self) -> vs.Trace:
+        index = pd.date_range("2023-01-01T00:00:00", "2023-01-01T01:00:00", freq="20min")
         actual = pd.DataFrame({"a": [1, 5, 3, 2], "b": [0, 1, 2, 3]}, index=index)
 
         forecast_data = [
@@ -38,14 +38,14 @@ class TestHistoricalSignal:
         ]
         forecast = pd.DataFrame(forecast_data, columns=["request_time", "forecast_time", "a", "b"])
         forecast.set_index(["request_time", "forecast_time"], inplace=True)
-        return vs.HistoricalSignal(actual, forecast)
+        return vs.Trace(actual, forecast)
 
     @pytest.fixture
-    def hist_signal_static_forecast(self) -> vs.HistoricalSignal:
-        index = pd.date_range("2023-01-01T00:00:00", "2023-01-01T03:00:00", freq="1H")
+    def hist_signal_static_forecast(self) -> vs.Trace:
+        index = pd.date_range("2023-01-01T00:00:00", "2023-01-01T03:00:00", freq="1h")
         actual = pd.Series([3, 2, 4, 0], index=index)
         forecast = pd.Series([4, 2, 4, 1], index=index)
-        return vs.HistoricalSignal(actual, forecast)
+        return vs.Trace(actual, forecast)
 
     def test_columns(self, hist_signal):
         assert hist_signal.columns() == ["a", "b", "c"]
@@ -169,7 +169,7 @@ class TestHistoricalSignal:
                 "2023-01-01T00:00:00",
                 "2023-01-01T03:00:00",
                 "a",
-                "2H",
+                "2h",
                 None,
                 {np.datetime64("2023-01-01T02:00:00.000000000"): 2.5},  # type: ignore
             ),
@@ -257,7 +257,7 @@ class TestHistoricalSignal:
                 "2023-01-01T01:00:00",
                 "2023-01-01T04:00:00",
                 "b",
-                "1H",
+                "1h",
                 "bfill",
                 {
                     np.datetime64("2023-01-01T02:00:00.000000000"): 2.5,  # type: ignore
@@ -269,7 +269,7 @@ class TestHistoricalSignal:
                 "2023-01-01T01:00:00",
                 "2023-01-01T04:00:00",
                 "b",
-                "1H",
+                "1h",
                 "nearest",
                 {
                     np.datetime64("2023-01-01T02:00:00.000000000"): 2.5,  # type: ignore
@@ -336,5 +336,5 @@ class TestHistoricalSignal:
                 "2023-01-01T00:00:00",
                 "2023-01-01T01:00:00",
                 column="a",
-                frequency="15T",
+                frequency="15min",
             )

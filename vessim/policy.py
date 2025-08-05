@@ -1,10 +1,12 @@
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Optional, Literal, Any
+from typing import TYPE_CHECKING, Optional, Literal, Any
 
 from loguru import logger
 
-from vessim.storage import Storage
+if TYPE_CHECKING:
+    from vessim.storage import Storage
 
 
 class MicrogridPolicy(ABC):
@@ -32,8 +34,8 @@ class MicrogridPolicy(ABC):
                 microgrid inside a simulation.
 
         Returns:
-            Total energy in Ws that has to be drawn from/ is fed to the public grid.
-            If the return value is smaller than 0, energy has been drawn.
+            Power in W that has benn drawn from (negative values) or fed to (positive values)
+            the public grid during the last step.
         """
 
     def set_parameter(self, key: str, value: Any) -> None:
@@ -91,7 +93,7 @@ class DefaultMicrogridPolicy(MicrogridPolicy):
             if energy_delta < 0.0:
                 raise RuntimeError("Not enough energy available to operate in islanded mode.")
             energy_delta = 0.0
-        return energy_delta
+        return energy_delta / duration  # Convert energy to power (p_grid)
 
     def state(self) -> dict:
         """Returns current `mode` and `charge_power` values."""
