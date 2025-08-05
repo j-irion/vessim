@@ -1,16 +1,19 @@
 defaults:
-- override hydra/launcher: joblib
+  - override hydra/launcher: joblib
 
 hydra:
   sweeper:
     params:
-      capacity_tuple: choice("24000,20000,37500","24000,32000,45000")
-capacity_tuple: "1500,1000,1000"
-#wind_system_capacity: 1500
-#solar_system_capacity: 1500
+      wind_system_capacity: range(0, 33000, step=3000)
+      solar_system_capacity: range(0, 44000, step=4000)
+      battery_capacity: range(0, 67500, step=7500)
+
+
+wind_system_capacity: 40000
+solar_system_capacity: 30000
 wind_turbine_model: GE 1.5sle
-#battery_capacity: 20000
-single_cell_capacity: 11.84
+battery_capacity: 60000
+single_cell_capacity: 19.14
 
 file_paths:
   power_data: ${hydra:runtime.cwd}/data/power_data_ce.csv

@@ -13,9 +13,7 @@ import numpy as np
 log = logging.getLogger(__name__)
 
 
-@hydra.main(
-    config_path="data", config_name="config_battery_analysis_sweep_submitit", version_base=None
-)
+@hydra.main(config_path="data", config_name="config_battery_analysis_sweep", version_base=None)
 def main(cfg):
     all_turbines = pd.read_csv(
         cfg.file_paths.wind_turbines, header=0, skiprows=[1, 2], on_bad_lines="warn"
@@ -169,8 +167,8 @@ def main(cfg):
     E_load = np.abs(merged_data["total_consumption"]) * dt_h
     E_renew = merged_data["total_renewable_power"] * dt_h
 
-    if "storage.charge_level" in merged_data.columns:
-        dSOC_wh = merged_data["storage.charge_level"].diff().fillna(0)
+    if "storage_state.charge_level" in merged_data.columns:
+        dSOC_wh = merged_data["storage_state.charge_level"].diff().fillna(0)
         E_batt = (-dSOC_wh).clip(lower=0)
     else:
         E_batt = pd.Series(0.0, index=merged_data.index)
@@ -203,7 +201,23 @@ def main(cfg):
         hydra.core.hydra_config.HydraConfig.get().runtime.output_dir + "/merged_data.csv"
     )
 
-    return coverage_pct
+    total_embodied_carbon_intensity = {
+        "wind": 349,  # kgCO2/kWp over lifetime
+        "solar": 412,  # kgCO2/kWp over lifetime
+        "battery": 74,  # kgCO2/kWh capacity
+    }
+
+    initial_embodied_gCO2 = (
+        cfg.wind_system_capacity * total_embodied_carbon_intensity["wind"]
+        + cfg.solar_system_capacity * total_embodied_carbon_intensity["solar"]
+        + batt_cap * total_embodied_carbon_intensity["battery"]
+    ) * 1000  # kg → g
+
+    total_operational_emissions_g = (
+        merged_data["carbon_emissions"].sum() if "carbon_emissions" in merged_data.columns else 0
+    )
+
+    return initial_embodied_gCO2, total_operational_emissions_g
 
 
 def automatic_farm_layout(
