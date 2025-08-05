@@ -79,12 +79,12 @@ class Trace(Signal):
     """
 
     def __init__(
-        self,
-        actual: pd.Series | pd.DataFrame,
-        forecast: Optional[pd.Series | pd.DataFrame] = None,
-        fill_method: Literal["ffill", "bfill"] = "ffill",
-        column: Optional[str] = None,
-        repr_: Optional[str] = None,
+            self,
+            actual: pd.Series | pd.DataFrame,
+            forecast: Optional[pd.Series | pd.DataFrame] = None,
+            fill_method: Literal["ffill", "bfill"] = "ffill",
+            column: Optional[str] = None,
+            repr_: Optional[str] = None,
     ):
         if isinstance(actual, pd.DataFrame) and forecast is not None:
             if isinstance(forecast, pd.DataFrame):
@@ -164,11 +164,11 @@ class Trace(Signal):
 
     @classmethod
     def load(
-        cls,
-        dataset: str,
-        column: Optional[str] = None,
-        data_dir: Optional[str | Path] = None,
-        params: Optional[dict[Any, Any]] = None,
+            cls,
+            dataset: str,
+            column: Optional[str] = None,
+            data_dir: Optional[str | Path] = None,
+            params: Optional[dict[Any, Any]] = None,
     ):
         """Creates a Trace from a vessim dataset, handling downloading and unpacking.
 
@@ -195,7 +195,7 @@ class Trace(Signal):
         return list(self._actual.keys())
 
     def now(
-        self, at: Optional[DatetimeLike] = None, column: Optional[str] = None, **kwargs
+            self, at: Optional[DatetimeLike] = None, column: Optional[str] = None, **kwargs
     ) -> float:
         """Retrieves actual data point of zone at given time.
 
@@ -236,12 +236,12 @@ class Trace(Signal):
                 raise ValueError(f"'{at}' is too late to get data in column '{column}'.")
 
     def forecast(
-        self,
-        start_time: DatetimeLike,
-        end_time: DatetimeLike,
-        column: Optional[str] = None,
-        frequency: Optional[str | timedelta] = None,
-        resample_method: Optional[Literal["ffill", "bfill", "linear", "nearest"]] = None,
+            self,
+            start_time: DatetimeLike,
+            end_time: DatetimeLike,
+            column: Optional[str] = None,
+            frequency: Optional[str | timedelta] = None,
+            resample_method: Optional[Literal["ffill", "bfill", "linear", "nearest"]] = None,
     ) -> dict[np.datetime64, float]:
         """Retrieves forecasted data points within window at a frequency.
 
@@ -351,14 +351,14 @@ class Trace(Signal):
         )
 
     def _resample_to_frequency(
-        self,
-        times: np.ndarray,
-        data: np.ndarray,
-        column: str,
-        start_time: np.datetime64,
-        end_time: np.datetime64,
-        freq: np.timedelta64,
-        resample_method: Optional[Literal["ffill", "bfill", "linear", "nearest"]],
+            self,
+            times: np.ndarray,
+            data: np.ndarray,
+            column: str,
+            start_time: np.datetime64,
+            end_time: np.datetime64,
+            freq: np.timedelta64,
+            resample_method: Optional[Literal["ffill", "bfill", "linear", "nearest"]],
     ) -> dict[np.datetime64, float]:
         """Transform frame into the desired frequency between start and end time."""
         # Cutoff data and create deep copy
@@ -375,7 +375,7 @@ class Trace(Signal):
 
         new_times_indices = np.searchsorted(times, new_times, side="left")
         if np.all(new_times_indices < times.size) and np.array_equal(
-            new_times, times[new_times_indices]
+                new_times, times[new_times_indices]
         ):
             # No resampling necessary
             new_data = data[new_times_indices]
@@ -526,14 +526,14 @@ class PrometheusSignal(SilSignal):
     """
 
     def __init__(
-        self,
-        prometheus_url: str,
-        query: str,
-        consumer: bool = True,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
-        update_interval: float = 10,
-        timeout: float = 10,
+            self,
+            prometheus_url: str,
+            query: str,
+            consumer: bool = True,
+            username: Optional[str] = None,
+            password: Optional[str] = None,
+            update_interval: float = 10,
+            timeout: float = 10,
     ):
         try:
             import requests
@@ -614,14 +614,14 @@ class WatttimeSignal(SilSignal):
     """
 
     def __init__(
-        self,
-        username: str,
-        password: str,
-        region: Optional[str] = None,
-        location: Optional[tuple[float, float]] = None,
-        base_url: str = "https://api.watttime.org",
-        update_interval: float = 300,
-        timeout: float = 10,
+            self,
+            username: str,
+            password: str,
+            region: Optional[str] = None,
+            location: Optional[tuple[float, float]] = None,
+            base_url: str = "https://api.watttime.org",
+            update_interval: float = 300,
+            timeout: float = 10,
     ) -> None:
         try:
             import requests
@@ -774,97 +774,99 @@ class WatttimeSignal(SilSignal):
         return data["data"][0]["value"]
 
 class SAMSignal(Signal):
-  """Signal class for generating data with the System Advisor Model (SAM).
+    """Signal class for generating data with the System Advisor Model (SAM).
 
-  The SAMSignal class is used to generate data with SAM. The data is
-  generated by running a SAM model with the given input parameters.
-
-  Args:
-      model: The SAM model to be used.
-      weather_data: The weather data to be used for the simulation.
-      config: An object containing the configuration needed to for the simulation.
-  """
-
-  def __init__(self, model: str, weather_file: str, config_file: str = None, config_object=None):
-    if config_file is None and config_object is None:
-      raise ValueError("Either 'config_file' or 'config_object' has to be provided.")
-    if config_file is not None and config_object is not None:
-      raise ValueError("Only one of 'config_file' or 'config_object' can be provided.")
-
-    # Number of rows of metadata in the weather file
-    skiprows = 1
-
-    if model == "Windpower":
-      self.model = PySAM.Windpower.default("WindPowerNone")
-      self.model.Resource.wind_resource_filename = weather_file
-    elif model == "Pvwattsv8":
-      self.model = PySAM.Pvwattsv8.default("PVWattsNone")
-      self.model.SolarResource.solar_resource_file = weather_file
-      skiprows = 2
-    else:
-      raise ValueError(f"Model '{model}' not supported.")
-
-    weather_data = pd.read_csv(weather_file, skiprows=skiprows)
-    weather_data["Datetime"] = pd.to_datetime(
-      weather_data[["Year", "Month", "Day", "Hour", "Minute"]]
-    )
-    weather_data.set_index("Datetime", inplace=True)
-    self.data = weather_data
-
-    if config_file:
-      with open(config_file, 'r', errors='replace') as file:
-        sam_data = json.load(file)
-    else:
-      sam_data = config_object
-
-    for k, v in sam_data.items():
-      if k not in ('number_inputs', 'wind_resource_filename', 'solar_resource_file'):
-        self.model.value(k, v)
-
-    self.model.execute()
-
-  def now(self, at: DatetimeLike, **kwargs) -> float:
-    """Retrieves actual data point at given time.
+    The SAMSignal class is used to generate data with SAM. The data is
+    generated by running a SAM model with the given input parameters.
 
     Args:
-        dt: Timestamp, at which data is returned.
-        **kwargs: Possibly needed for subclasses. Are not supported in this class and a
-            ValueError will be raised if specified.
-
-    Raises:
-        ValueError: If extra kwargs are specified or if the given time is not included in the data.
+        model: The SAM model to be used.
+        weather_data: The weather data to be used for the simulation.
+        config: An object containing the configuration needed to for the simulation.
     """
-    if kwargs:
-      raise ValueError(f"Invalid arguments: {kwargs.keys()}")
+    def __init__(self, model: str, weather_file: str, config_file: str = None, config_object=None):
+        if config_file is None and config_object is None:
+            raise ValueError("Either 'config_file' or 'config_object' has to be provided.")
+        if config_file is not None and config_object is not None:
+            raise ValueError("Only one of 'config_file' or 'config_object' can be provided.")
 
-    if self.model.value("system_capacity") == 0:
-      return 0
+        # Number of rows of metadata in the weather file
+        skiprows = 1
 
-    try:
-      idx = self._time_to_index(at)
-      power = float(self.model.Outputs.gen[idx]) * 1000
-      return power
-    except KeyError:
-      last_valid_idx = self.data.index.asof(at)
-      if pd.isna(last_valid_idx):
-        raise ValueError(f"Cannot retrieve power at {at}.")
-      last_valid_idx = self.data.index.get_loc(last_valid_idx)
-      power = float(self.model.Outputs.gen[last_valid_idx]) * 1000
-      return power
+        if model == "Windpower":
+            self.model = PySAM.Windpower.default("WindPowerNone")
+            self.model.Resource.wind_resource_filename = weather_file
+        elif model == "Pvwattsv8":
+            self.model = PySAM.Pvwattsv8.default("PVWattsNone")
+            self.model.SolarResource.solar_resource_file = weather_file
+            skiprows = 2
+        else:
+            raise ValueError(f"Model '{model}' not supported.")
 
-  def _time_to_index(self, dt: DatetimeLike) -> int:
-    """Converts a datetime object to the index of the data."""
-    datetime_obj = datetime.strptime(
-      str(dt), "%Y-%m-%d %H:%M:%S"
-    )
-    idx = self.data.index.get_loc(datetime_obj)
-    return idx
+        weather_data = pd.read_csv(weather_file, skiprows=skiprows)
+        weather_data["Datetime"] = pd.to_datetime(
+            weather_data[["Year", "Month", "Day", "Hour", "Minute"]]
+        )
+        weather_data.set_index("Datetime", inplace=True)
+        self.data = weather_data
+
+        if config_file:
+            with open(config_file, 'r', errors='replace') as file:
+                sam_data = json.load(file)
+        else:
+            sam_data = config_object
+
+        for k, v in sam_data.items():
+            if k not in ('number_inputs', 'wind_resource_filename', 'solar_resource_file'):
+                try:
+                    self.model.value(k, v)
+                except Exception as e:
+                    print(f"Could not set SAM parameter '{k}': {e}")
+
+        self.model.execute()
+
+    def now(self, at: DatetimeLike, **kwargs) -> float:
+        """Retrieves actual data point at given time.
+
+        Args:
+            dt: Timestamp, at which data is returned.
+            **kwargs: Possibly needed for subclasses. Are not supported in this class and a
+                ValueError will be raised if specified.
+
+        Raises:
+            ValueError: If extra kwargs are specified or if the given time is not included in the data.
+        """
+        if kwargs:
+            raise ValueError(f"Invalid arguments: {kwargs.keys()}")
+
+        if self.model.value("system_capacity") == 0:
+            return 0
+
+        try:
+            idx = self._time_to_index(at)
+            power = float(self.model.Outputs.gen[idx]) * 1000
+            return power
+        except KeyError:
+            last_valid_idx = self.data.index.asof(at)
+            if pd.isna(last_valid_idx):
+                raise ValueError(f"Cannot retrieve power at {at}.")
+            last_valid_idx = self.data.index.get_loc(last_valid_idx)
+            power = float(self.model.Outputs.gen[last_valid_idx]) * 1000
+            return power
+
+    def _time_to_index(self, dt: DatetimeLike) -> int:
+        """Converts a datetime object to the index of the data."""
+        datetime_obj = datetime.strptime(
+            str(dt), "%Y-%m-%d %H:%M:%S"
+        )
+        idx = self.data.index.get_loc(datetime_obj)
+        return idx
 
 class FileSignal(Signal):
     def __init__(self, file_path: str, unit: Optional[str] = "W", date_format: Optional[str] = None, name: Optional[str] = None):
         if name is None:
             name = f"FileSignal-{next(self._ids)}"
-        super().__init__(name)
+        self.name = name
         self.data = self._load_data(file_path, date_format)
         self.unit = unit
 
@@ -931,28 +933,3 @@ class FileSignal(Signal):
         if pd.isna(last_valid_time):
             raise ValueError(f"No data available before or at {at}")
         return self._convert_power_to_watts(float(self.data.at[last_valid_time, 'power']), self.unit)
-
-
-def _get_column_name(data: dict[str, Any], column: Optional[str]) -> str:
-    """Extracts data from a dictionary at a key."""
-    if column is None:
-        if len(data) == 1:
-            return next(iter(data.keys()))
-        else:
-            raise ValueError("Column needs to be specified.")
-    elif column in data.keys():
-        return column
-    else:
-        raise ValueError(f"Cannot retrieve data for column '{column}'.")
-
-
-def _abs_path(data_dir: Optional[str | Path]) -> Path:
-    """Returns absolute path to the directory data should be loaded into."""
-    if data_dir is None:
-        return Path.home() / ".cache" / "vessim"
-
-    path = Path(data_dir).expanduser()
-    if path.is_absolute():
-        return path
-    else:
-        raise ValueError(f"Path {data_dir} not valid. Has to be absolute or None.")
