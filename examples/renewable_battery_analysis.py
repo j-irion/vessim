@@ -13,7 +13,7 @@ import numpy as np
 log = logging.getLogger(__name__)
 
 
-@hydra.main(config_path="data", config_name="config_battery_analysis_sweep", version_base=None)
+@hydra.main(config_path="configs", config_name="config_battery_analysis_sweep", version_base=None)
 def main(cfg):
     all_turbines = pd.read_csv(
         cfg.file_paths.wind_turbines, header=0, skiprows=[1, 2], on_bad_lines="warn"
