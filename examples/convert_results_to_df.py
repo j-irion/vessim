@@ -57,7 +57,7 @@ def convert_results_to_df(results_folder: str, location: str):
             print(f"  Analyzing {sub.name}")
             folder = os.path.expanduser(sub.path)
             cfg_path = os.path.join(folder, ".hydra", "config.yaml")
-            data_path = os.path.join(folder, "merged_data.feather")
+            data_path = os.path.join(folder, "merged_data.csv")
 
             with open(cfg_path, "r") as f:
                 config = yaml.safe_load(f)
@@ -75,7 +75,7 @@ def convert_results_to_df(results_folder: str, location: str):
                 + batt_cap * total_embodied_carbon_intensity["battery"]
             ) * 1000  # kg → g
 
-            df = pd.read_feather(data_path)
+            df = pd.read_csv(data_path)
 
             total_wind_kwh = (df["actor_states.Wind.p"].sum() / 1000) * dt_h
             total_solar_kwh = (df["actor_states.Solar.p"].sum() / 1000) * dt_h
@@ -130,8 +130,7 @@ def convert_results_to_df(results_folder: str, location: str):
             )
 
     results_df = pd.DataFrame.from_records(records)
-    results_df.to_csv(f"{location}_results_3.csv", index=False)
-    results_df.to_feather(f"{location}_results_3.feather")
+    results_df.to_csv(f"{location}_results.csv", index=False)
 
 
 if __name__ == "__main__":
