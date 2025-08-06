@@ -138,7 +138,7 @@ def main(cfg):
         monitor = Monitor([microgrid])
         environment.add_controller(monitor)
 
-    environment.run(until=24 * 3600 * 2)
+    environment.run(until=24 * 3600 * 365)  # 365 days
     monitor.to_csv("result.csv")
 
     df = pd.read_csv(
