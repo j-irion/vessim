@@ -40,7 +40,7 @@ poetry run python convert_results_to_df.py -d ./multirun/<date>/<time> -l berkle
 ```
 
 ### 2.3 Visualize Results
-You can visualize the results using the provided Jupyter notebook [emission_analysis.ipynb](./emission_analysis.ipynb). This notebook will help you analyze the performance of different configurations based on the simulation results.
+You can visualize the results using the provided Jupyter notebook [emissions_analysis.ipynb](./examples/emissions_analysis.ipynb). This notebook will help you analyze the performance of different configurations based on the simulation results.
 
 ## 3. Hyperparameter Optimization (Optuna)
 Run the Optuna-based optimization for more efficient search:
