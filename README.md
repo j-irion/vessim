@@ -59,6 +59,6 @@ poetry run python renewable_battery_analysis.py --config-name config_battery_ana
 
 ## Notes
 - The exhaustive search and Optuna optimization are alternative methods and should not be run in succession.
-- All simulation logic is managed via hydra and submitit for parallel execution.
+- All simulation logic is managed via hydra and joblib for parallel execution.
 - Configuration files are located in the `configs/` directory.
 - CSV outputs contain performance metrics for each configuration, suitable for analysis or visualization.
